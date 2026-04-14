@@ -138,7 +138,7 @@ final class TerminalPanel: Panel, ObservableObject {
 
     func sendComposerText() {
         guard let state = composerState else { return }
-        let content = state.text
+        let content = state.resolvedTextForSending()
         guard !content.isEmpty else { return }
         surface.sendInput(content)
         savedComposerDraft = ""

@@ -167,14 +167,10 @@ struct ComposerInputView: View {
             defaultValue: "Select images to attach"
         )
         guard panel.runModal() == .OK else { return }
-        let paths = panel.urls
-            .map { GhosttyPasteboardHelper.escapeForShell($0.path) }
-            .joined(separator: " ")
-        guard !paths.isEmpty else { return }
-        if composerState.text.isEmpty {
-            composerState.text = paths + " "
-        } else {
-            composerState.text += (composerState.text.hasSuffix(" ") ? "" : " ") + paths + " "
+        for url in panel.urls {
+            let marker = composerState.addImage(url: url)
+            let prefix = composerState.text.isEmpty || composerState.text.hasSuffix(" ") ? "" : " "
+            composerState.text += prefix + marker + " "
         }
     }
 }
@@ -302,6 +298,15 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
                 range: fullRange
             )
 
+            // Highlight [IMAGE #N] markers in teal
+            if let regex = try? NSRegularExpression(pattern: #"\[IMAGE #\d+\]"#) {
+                let matches = regex.matches(in: text, range: fullRange)
+                for match in matches {
+                    textStorage.addAttribute(.foregroundColor, value: NSColor.systemTeal, range: match.range)
+                }
+            }
+
+            // Highlight slash commands
             guard text.hasPrefix("/") else { return }
             let afterSlash = text.dropFirst()
             let commandEnd = afterSlash.firstIndex(of: " ") ?? afterSlash.endIndex
@@ -358,8 +363,13 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
         textView.onBecomeFirstResponder = { [weak coordinator = context.coordinator] in
             coordinator?.parent.onBecomeFirstResponder()
         }
-        textView.onImagePasted = { path in
-            context.coordinator.parent.composerState.text += (context.coordinator.parent.composerState.text.isEmpty ? "" : " ") + path + " "
+        textView.onImagePasted = {
+            let state = context.coordinator.parent.composerState
+            if let imageURL = state.saveImageFromPasteboard() {
+                let marker = state.addImage(url: imageURL)
+                let prefix = state.text.isEmpty || state.text.hasSuffix(" ") ? "" : " "
+                state.text += prefix + marker + " "
+            }
         }
         textView.setAccessibilityLabel(placeholder)
 
@@ -400,7 +410,7 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
 private final class ComposerNSTextView: NSTextView {
     var placeholderText: String = ""
     var onBecomeFirstResponder: (() -> Void)?
-    var onImagePasted: ((String) -> Void)?
+    var onImagePasted: (() -> Void)?
 
     override func becomeFirstResponder() -> Bool {
         let result = super.becomeFirstResponder()
@@ -435,15 +445,12 @@ private final class ComposerNSTextView: NSTextView {
 
     override func paste(_ sender: Any?) {
         let pb = NSPasteboard.general
-        if GhosttyPasteboardHelper.stringContents(from: pb) != nil {
-            super.paste(sender)
-            return
-        }
-        if let imageURL = GhosttyPasteboardHelper.saveImageFileURLIfNeeded(
-            from: pb, assumeNoText: true
-        ) {
-            let path = GhosttyPasteboardHelper.escapeForShell(imageURL.path)
-            onImagePasted?(path)
+        let types = pb.types ?? []
+        let hasImage = types.contains(.tiff) || types.contains(.png)
+        // Check for image FIRST (fixes screenshot paste: screenshots put a file URL
+        // on the clipboard that stringContents() picks up, bypassing image handling).
+        if hasImage {
+            onImagePasted?()
             return
         }
         super.paste(sender)
@@ -464,14 +471,20 @@ private final class ComposerNSTextView: NSTextView {
         let content = TerminalImageTransferPlanner.prepare(pasteboard: pb, mode: .drop)
         switch content {
         case .fileURLs(let urls):
-            let paths = urls
-                .map { GhosttyPasteboardHelper.escapeForShell($0.path) }
-                .joined(separator: " ")
-            if !paths.isEmpty {
-                insertText(paths + " ", replacementRange: selectedRange())
-                return true
+            // For image files, use the image marker system
+            let imageTypes = Set(["png", "jpg", "jpeg", "gif", "tiff", "tif", "webp", "bmp"])
+            var handled = false
+            for url in urls {
+                if imageTypes.contains(url.pathExtension.lowercased()) {
+                    onImagePasted?()
+                    handled = true
+                } else {
+                    let path = GhosttyPasteboardHelper.escapeForShell(url.path)
+                    insertText(path + " ", replacementRange: selectedRange())
+                    handled = true
+                }
             }
-            return false
+            return handled
         case .insertText(let text):
             insertText(text, replacementRange: selectedRange())
             return true
