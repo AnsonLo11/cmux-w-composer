@@ -478,10 +478,10 @@ private final class ComposerImageAttachmentCell: NSTextAttachmentCell {
     required init(coder: NSCoder) { fatalError() }
 
     override func cellSize() -> NSSize {
-        let labelWidth = (marker as NSString).size(
+        let labelWidth = ceil((marker as NSString).size(
             withAttributes: [.font: NSFont.systemFont(ofSize: 10, weight: .medium)]
-        ).width
-        let w = hPadding + swatchSize + 4 + labelWidth + hPadding
+        ).width)
+        let w = hPadding + swatchSize + 4 + labelWidth + hPadding + 2 // +2 safety
         return NSSize(width: w, height: pillHeight)
     }
 

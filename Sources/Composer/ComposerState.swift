@@ -42,15 +42,26 @@ final class ComposerState: ObservableObject {
             result = result.replacingOccurrences(of: marker, with: path)
         }
         // Replace U+FFFC attachment characters (thumbnail path).
-        // Attachments appear in text order; imageInsertionOrder tracks which image each one is.
-        let attachmentChar = "\u{FFFC}"
-        for index in imageInsertionOrder {
-            guard let url = attachedImages[index],
-                  let range = result.range(of: attachmentChar) else { continue }
-            let path = GhosttyPasteboardHelper.escapeForShell(url.path)
-            result = result.replacingCharacters(in: range, with: path)
+        // Each U+FFFC in left-to-right order maps to the next image in insertion order.
+        // Use sorted keys as fallback if imageInsertionOrder is incomplete.
+        let attachmentChar: Character = "\u{FFFC}"
+        let orderedIndices = imageInsertionOrder.isEmpty
+            ? attachedImages.keys.sorted()
+            : imageInsertionOrder
+        var indexIterator = orderedIndices.makeIterator()
+        var resolved = ""
+        for ch in result {
+            if ch == attachmentChar {
+                if let imgIndex = indexIterator.next(),
+                   let url = attachedImages[imgIndex] {
+                    resolved += GhosttyPasteboardHelper.escapeForShell(url.path)
+                }
+                // If no more images, drop the orphan U+FFFC
+            } else {
+                resolved.append(ch)
+            }
         }
-        return result
+        return resolved
     }
 
     /// Tracks the order images were inserted (for resolving U+FFFC attachment chars in order).

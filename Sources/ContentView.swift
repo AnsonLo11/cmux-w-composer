@@ -12162,13 +12162,14 @@ private struct SidebarDevFooter: View {
     private var showSidebarDevBuildBanner = DevBuildBannerDebugSettings.defaultShowSidebarBanner
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        HStack(spacing: 4) {
             SidebarFooterButtons(updateViewModel: updateViewModel, onSendFeedback: onSendFeedback)
             if showSidebarDevBuildBanner {
-                Text("anson's")
+                Text("Anson's")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(Color(red: 0, green: 0x88 / 255.0, blue: 1.0)) // #08F
             }
+            Spacer()
         }
         .padding(.leading, 6)
         .padding(.trailing, 10)
