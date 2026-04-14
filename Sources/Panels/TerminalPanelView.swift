@@ -74,6 +74,11 @@ struct TerminalPanelView: View {
                     }
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
+                .onAppear { [weak surface = panel.surface] in
+                    // Immediately tell terminal to stop its focus reclamation loop,
+                    // before the composer's NSTextView has a chance to claim firstResponder.
+                    surface?.setFocus(false)
+                }
             }
         }
     }

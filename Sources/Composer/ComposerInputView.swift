@@ -491,11 +491,17 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
            let window = nsView.window,
            textView.superview != nil {
             context.coordinator.hasAppliedInitialFocus = true
-            // Claim focus immediately and also after a short delay to ensure
-            // the view hierarchy is fully established (panel-based composer may
-            // not be in the responder chain on the first updateNSView pass).
+            // Claim focus with multiple attempts to handle timing:
+            // 1. Sync: immediate claim (might be too early for window hierarchy)
+            // 2. Async: next run loop (composerIsActive flag should be set by now)
+            // 3. Delayed: after terminal focus reclamation has settled
             window.makeFirstResponder(textView)
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [weak textView] in
+                guard let textView, let window = textView.window else { return }
+                window.makeFirstResponder(textView)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak textView] in
+                guard let textView, let window = textView.window else { return }
                 window.makeFirstResponder(textView)
             }
         }
