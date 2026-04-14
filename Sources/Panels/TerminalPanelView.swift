@@ -32,6 +32,7 @@ struct TerminalPanelView: View {
             inactiveOverlayColor: appearance.unfocusedOverlayNSColor,
             inactiveOverlayOpacity: appearance.unfocusedOverlayOpacity,
             searchState: panel.searchState,
+            composerState: panel.composerState,
             reattachToken: panel.viewReattachToken,
             onFocus: { _ in onFocus() },
             onTriggerFlash: onTriggerFlash

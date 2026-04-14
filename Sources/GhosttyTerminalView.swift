@@ -8430,6 +8430,8 @@ extension Notification.Name {
     static let ghosttyConfigDidReload = Notification.Name("ghosttyConfigDidReload")
     static let ghosttyDefaultBackgroundDidChange = Notification.Name("ghosttyDefaultBackgroundDidChange")
     static let browserSearchFocus = Notification.Name("browserSearchFocus")
+    static let cmuxComposerDidSend = Notification.Name("cmuxComposerDidSend")
+    static let cmuxComposerDidDismiss = Notification.Name("cmuxComposerDidDismiss")
 }
 
 // MARK: - Scroll View Wrapper (Ghostty-style scrollbar)
@@ -8545,6 +8547,8 @@ final class GhosttySurfaceScrollView: NSView {
     private let imageTransferIndicatorSpinner: NSProgressIndicator
     private let imageTransferCancelButton: NSButton
     private var searchOverlayHostingView: NSHostingView<SurfaceSearchOverlay>?
+    private var composerOverlayHostingView: NSHostingView<ComposerInputView>?
+    private var lastComposerStateID: ObjectIdentifier?
     private var deferredSearchOverlayMutationWorkItem: DispatchWorkItem?
     private var imageTransferIndicatorShowWorkItem: DispatchWorkItem?
     private var activeImageTransferOperation: TerminalImageTransferOperation?
@@ -9797,6 +9801,86 @@ final class GhosttySurfaceScrollView: NSView {
         }
     }
 
+    // MARK: - Composer overlay
+
+    func setComposerOverlay(composerState: ComposerState?) {
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { [weak self] in
+                self?.setComposerOverlay(composerState: composerState)
+            }
+            return
+        }
+
+        guard let terminalSurface = surfaceView.terminalSurface,
+              let composerState else {
+            // Remove
+            lastComposerStateID = nil
+            composerOverlayHostingView?.removeFromSuperview()
+            composerOverlayHostingView = nil
+            return
+        }
+
+        let stateID = ObjectIdentifier(composerState)
+        if let overlay = composerOverlayHostingView,
+           lastComposerStateID == stateID,
+           overlay.superview === self {
+            _ = setFrameIfNeeded(overlay, to: bounds)
+            return
+        }
+
+        let rootView = ComposerInputView(
+            composerState: composerState,
+            onSend: { [weak terminalSurface] _ in
+                guard let terminalSurface else { return }
+                NotificationCenter.default.post(
+                    name: .cmuxComposerDidSend,
+                    object: terminalSurface
+                )
+            },
+            onDismiss: { [weak self, weak terminalSurface] in
+                guard let terminalSurface else { return }
+                NotificationCenter.default.post(
+                    name: .cmuxComposerDidDismiss,
+                    object: terminalSurface
+                )
+                self?.moveFocus()
+            },
+            onTextViewBecameFirstResponder: { [weak terminalSurface] in
+                // Stop the terminal's focus reassertion loop while the composer is editing.
+                terminalSurface?.setFocus(false)
+            }
+        )
+
+        if let overlay = composerOverlayHostingView {
+            overlay.rootView = rootView
+            lastComposerStateID = stateID
+            if overlay.superview !== self {
+                overlay.removeFromSuperview()
+                overlay.frame = bounds
+                overlay.autoresizingMask = [.width, .height]
+                addSubview(overlay)
+            }
+            return
+        }
+
+        let overlay = NSHostingView(rootView: rootView)
+        overlay.frame = bounds
+        overlay.autoresizingMask = [.width, .height]
+        composerOverlayHostingView = overlay
+        lastComposerStateID = stateID
+        addSubview(overlay)
+
+        // Tell the terminal surface to drop focus + claim first responder for the text view.
+        surfaceView.terminalSurface?.setFocus(false)
+        DispatchQueue.main.async { [weak self] in
+            guard let self,
+                  let window = self.window,
+                  let tv = self.mountedComposerTextView() else { return }
+            self.surfaceView.terminalSurface?.setFocus(false)
+            window.makeFirstResponder(tv)
+        }
+    }
+
     func syncKeyStateIndicator(text: String?) {
         if !Thread.isMainThread {
             DispatchQueue.main.async { [weak self] in
@@ -10382,6 +10466,12 @@ final class GhosttySurfaceScrollView: NSView {
             return
         }
 
+        // Composer focus restoration — keep keyboard input in the composer overlay.
+        if composerOverlayHostingView != nil {
+            restoreComposerFocus(window: window)
+            return
+        }
+
         if let fr = window.firstResponder as? NSView,
            fr === surfaceView || fr.isDescendant(of: surfaceView) {
             reassertTerminalSurfaceFocus(reason: "ensureFocus.alreadyFirstResponder")
@@ -10569,6 +10659,11 @@ final class GhosttySurfaceScrollView: NSView {
             restoreSearchFocus(window: window)
             return
         }
+        // Composer is open — keep focus in composer text view.
+        if composerOverlayHostingView != nil {
+            restoreComposerFocus(window: window)
+            return
+        }
         if let fr = window.firstResponder as? NSView,
            fr === surfaceView || fr.isDescendant(of: surfaceView) {
             reassertTerminalSurfaceFocus(reason: "applyFirstResponder.alreadyFirstResponder")
@@ -10579,6 +10674,10 @@ final class GhosttySurfaceScrollView: NSView {
 #if DEBUG
             dlog("find.applyFirstResponder SKIP surface=\(surfaceShort) reason=searchOverlayFocused")
 #endif
+            return
+        }
+        // Don't steal focus from a composer overlay anywhere in this window.
+        if let fr = window.firstResponder, isResponderInsideAnyComposerOverlay(fr, in: window) {
             return
         }
 #if DEBUG
@@ -10833,6 +10932,73 @@ final class GhosttySurfaceScrollView: NSView {
             current = v.superview
         }
         return false
+    }
+
+    /// Check if a responder is inside the composer overlay hosting view.
+    private func isComposerOverlayOrDescendant(_ responder: NSResponder) -> Bool {
+        guard let overlay = composerOverlayHostingView else { return false }
+        var current: NSView? = responder as? NSView
+        // Handle field-editor case for NSTextView
+        if current == nil, let tv = responder as? NSTextView {
+            current = tv
+        }
+        while let v = current {
+            if v === overlay { return true }
+            current = v.superview
+        }
+        return false
+    }
+
+    /// Find the composer's editable NSTextView (descendant of the hosting view).
+    private func mountedComposerTextView() -> NSTextView? {
+        guard let overlay = composerOverlayHostingView,
+              overlay.superview === self else { return nil }
+        return findEditableTextView(in: overlay)
+    }
+
+    private func findEditableTextView(in view: NSView?) -> NSTextView? {
+        guard let view else { return nil }
+        if let tv = view as? NSTextView, tv.isEditable {
+            return tv
+        }
+        for sub in view.subviews {
+            if let tv = findEditableTextView(in: sub) {
+                return tv
+            }
+        }
+        return nil
+    }
+
+    /// Check whether the responder lives inside any composer overlay anywhere in the window.
+    /// Used to prevent OTHER surfaces from stealing focus while THIS surface's composer is active.
+    private func isResponderInsideAnyComposerOverlay(_ responder: NSResponder, in window: NSWindow) -> Bool {
+        var view: NSView? = responder as? NSView
+        if view == nil, let tv = responder as? NSTextView {
+            view = tv
+        }
+        while let v = view {
+            let typeName = String(describing: type(of: v))
+            if typeName.contains("ComposerInputView") {
+                return true
+            }
+            view = v.superview
+        }
+        return false
+    }
+
+    /// Restore composer focus when ensure/apply focus runs. Mirrors restoreSearchFocus.
+    private func restoreComposerFocus(window: NSWindow) {
+        guard let textView = mountedComposerTextView() else { return }
+        // Mark terminal surface as unfocused so its cursor blink + reassert loop stops.
+        surfaceView.terminalSurface?.setFocus(false)
+        let firstResponder = window.firstResponder
+        if firstResponder === textView {
+            return
+        }
+        if let fr = firstResponder, isComposerOverlayOrDescendant(fr) {
+            return
+        }
+        window.makeFirstResponder(textView)
     }
 
     private func isCurrentSurfaceSearchResponder(_ responder: NSResponder) -> Bool {
@@ -11789,6 +11955,7 @@ struct GhosttyTerminalView: NSViewRepresentable {
     var inactiveOverlayColor: NSColor = .clear
     var inactiveOverlayOpacity: Double = 0
     var searchState: TerminalSurface.SearchState? = nil
+    var composerState: ComposerState? = nil
     var reattachToken: UInt64 = 0
     var onFocus: ((UUID) -> Void)? = nil
     var onTriggerFlash: (() -> Void)? = nil
@@ -11993,6 +12160,7 @@ struct GhosttyTerminalView: NSViewRepresentable {
             )
             hostedView.setNotificationRing(visible: showsUnreadNotificationRing)
             hostedView.setSearchOverlay(searchState: searchState)
+            hostedView.setComposerOverlay(composerState: composerState)
             hostedView.syncKeyStateIndicator(text: terminalSurface.currentKeyStateIndicatorText)
         }
         let portalExpectedSurfaceId = terminalSurface.id

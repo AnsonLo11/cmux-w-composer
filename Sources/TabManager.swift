@@ -1058,6 +1058,29 @@ class TabManager: ObservableObject {
             }
         })
 
+        observers.append(NotificationCenter.default.addObserver(
+            forName: .cmuxComposerDidSend,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            MainActor.assumeIsolated { [weak self] in
+                guard let self,
+                      let surface = notification.object as? TerminalSurface else { return }
+                terminalPanel(tabId: surface.tabId, panelId: surface.id)?.sendComposerText()
+            }
+        })
+        observers.append(NotificationCenter.default.addObserver(
+            forName: .cmuxComposerDidDismiss,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            MainActor.assumeIsolated { [weak self] in
+                guard let self,
+                      let surface = notification.object as? TerminalSurface else { return }
+                terminalPanel(tabId: surface.tabId, panelId: surface.id)?.hideComposer()
+            }
+        })
+
         startAgentPIDSweepTimer()
         startWorkspaceGitMetadataPollTimer()
         startSelectedWorkspaceGitMetadataPollTimer()
@@ -1883,6 +1906,13 @@ class TabManager: ObservableObject {
         }
 
         focusedBrowserPanel?.hideFind()
+    }
+
+    // MARK: - Composer
+
+    func toggleComposer() {
+        guard let panel = selectedTerminalPanel else { return }
+        panel.toggleComposer()
     }
 
     func makeWorkspaceForCreation(

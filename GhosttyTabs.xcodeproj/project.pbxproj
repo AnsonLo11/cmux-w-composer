@@ -48,6 +48,11 @@
 			B9000024A1B2C3D4E5F60719 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = A5001251 /* Sentry */; };
 			A5001270 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = A5001271 /* PostHog */; };
 			A5001303 /* SurfaceSearchOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001301 /* SurfaceSearchOverlay.swift */; };
+			A500C001 /* ComposerState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A500C010 /* ComposerState.swift */; };
+			A500C002 /* ComposerInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A500C011 /* ComposerInputView.swift */; };
+			A500C003 /* SlashCommandRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A500C012 /* SlashCommandRegistry.swift */; };
+			A500C004 /* SlashCompletionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A500C013 /* SlashCompletionView.swift */; };
+			A500C005 /* slash-commands.json in Resources */ = {isa = PBXBuildFile; fileRef = A500C014 /* slash-commands.json */; };
 			A5008371 /* BrowserSearchOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5008370 /* BrowserSearchOverlay.swift */; };
 			A5008373 /* BrowserFindJavaScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5008372 /* BrowserFindJavaScript.swift */; };
 			A50012F1 /* Backport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50012F0 /* Backport.swift */; };
@@ -247,6 +252,11 @@
 		A5001091 /* NotificationsPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsPage.swift; sourceTree = "<group>"; };
 		A5001092 /* TerminalNotificationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalNotificationStore.swift; sourceTree = "<group>"; };
 		A5001301 /* SurfaceSearchOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Find/SurfaceSearchOverlay.swift; sourceTree = "<group>"; };
+		A500C010 /* ComposerState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Composer/ComposerState.swift; sourceTree = "<group>"; };
+		A500C011 /* ComposerInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Composer/ComposerInputView.swift; sourceTree = "<group>"; };
+		A500C012 /* SlashCommandRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Composer/SlashCommandRegistry.swift; sourceTree = "<group>"; };
+		A500C013 /* SlashCompletionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Composer/SlashCompletionView.swift; sourceTree = "<group>"; };
+		A500C014 /* slash-commands.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "slash-commands.json"; sourceTree = "<group>"; };
 		A5008370 /* BrowserSearchOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Find/BrowserSearchOverlay.swift; sourceTree = "<group>"; };
 		A5008372 /* BrowserFindJavaScript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Find/BrowserFindJavaScript.swift; sourceTree = "<group>"; };
 		A50012F0 /* Backport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Backport.swift; sourceTree = "<group>"; };
@@ -389,6 +399,7 @@
 				DA7A10CA710E000000000003 /* Localizable.xcstrings in Resources */,
 				DA7A10CA710E000000000004 /* InfoPlist.xcstrings in Resources */,
 				A5001623 /* cmux.sdef in Resources */,
+				A500C005 /* slash-commands.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -486,6 +497,10 @@
 				A5001092 /* TerminalNotificationStore.swift */,
 				A5001301 /* SurfaceSearchOverlay.swift */,
 				A5008370 /* BrowserSearchOverlay.swift */,
+				A500C010 /* ComposerState.swift */,
+				A500C011 /* ComposerInputView.swift */,
+				A500C012 /* SlashCommandRegistry.swift */,
+				A500C013 /* SlashCompletionView.swift */,
 				A5008372 /* BrowserFindJavaScript.swift */,
 				A5001410 /* Panel.swift */,
 				A5001411 /* TerminalPanel.swift */,
@@ -539,6 +554,7 @@
 				DA7A10CA710E000000000001 /* Localizable.xcstrings */,
 				DA7A10CA710E000000000002 /* InfoPlist.xcstrings */,
 				A5001622 /* cmux.sdef */,
+				A500C014 /* slash-commands.json */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -811,6 +827,10 @@
 				A5001095 /* TerminalNotificationStore.swift in Sources */,
 				A5001303 /* SurfaceSearchOverlay.swift in Sources */,
 				A5008371 /* BrowserSearchOverlay.swift in Sources */,
+				A500C001 /* ComposerState.swift in Sources */,
+				A500C002 /* ComposerInputView.swift in Sources */,
+				A500C003 /* SlashCommandRegistry.swift in Sources */,
+				A500C004 /* SlashCompletionView.swift in Sources */,
 				A5008373 /* BrowserFindJavaScript.swift in Sources */,
 				A5001400 /* Panel.swift in Sources */,
 				A5001401 /* TerminalPanel.swift in Sources */,
