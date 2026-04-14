@@ -31,6 +31,12 @@ final class TerminalPanel: Panel, ObservableObject {
         }
     }
 
+    /// Composer input overlay state. Non-nil means the composer is visible.
+    @Published var composerState: ComposerState?
+
+    /// Preserved draft text so it survives composer show/hide cycles.
+    private var savedComposerDraft: String = ""
+
     /// Bump this token to force SwiftUI to call `updateNSView` on `GhosttyTerminalView`,
     /// which re-attaches the hosted view after bonsplit close/reparent operations.
     ///
@@ -115,6 +121,28 @@ final class TerminalPanel: Panel, ObservableObject {
         if !trimmed.isEmpty && title != trimmed {
             title = trimmed
         }
+    }
+
+    func toggleComposer() {
+        if composerState != nil {
+            hideComposer()
+        } else {
+            composerState = ComposerState(text: savedComposerDraft)
+        }
+    }
+
+    func hideComposer() {
+        savedComposerDraft = composerState?.text ?? savedComposerDraft
+        composerState = nil
+    }
+
+    func sendComposerText() {
+        guard let state = composerState else { return }
+        let content = state.text
+        guard !content.isEmpty else { return }
+        surface.sendInput(content)
+        savedComposerDraft = ""
+        composerState = nil
     }
 
     func updateDirectory(_ newDirectory: String) {

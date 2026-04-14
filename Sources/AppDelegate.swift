@@ -11459,6 +11459,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             return true
         }
 
+        if matchConfiguredShortcut(event: event, action: .toggleComposer) {
+            tabManager?.toggleComposer()
+            return true
+        }
+
         if matchConfiguredShortcut(event: event, action: .reopenClosedBrowserPanel) {
             _ = tabManager?.reopenMostRecentlyClosedBrowserPanel()
             return true

@@ -8430,6 +8430,8 @@ extension Notification.Name {
     static let ghosttyConfigDidReload = Notification.Name("ghosttyConfigDidReload")
     static let ghosttyDefaultBackgroundDidChange = Notification.Name("ghosttyDefaultBackgroundDidChange")
     static let browserSearchFocus = Notification.Name("browserSearchFocus")
+    static let cmuxComposerDidSend = Notification.Name("cmuxComposerDidSend")
+    static let cmuxComposerDidDismiss = Notification.Name("cmuxComposerDidDismiss")
 }
 
 // MARK: - Scroll View Wrapper (Ghostty-style scrollbar)
@@ -8545,6 +8547,9 @@ final class GhosttySurfaceScrollView: NSView {
     private let imageTransferIndicatorSpinner: NSProgressIndicator
     private let imageTransferCancelButton: NSButton
     private var searchOverlayHostingView: NSHostingView<SurfaceSearchOverlay>?
+    /// Set from updateNSView when TerminalPanelView has an active composer.
+    /// Used by ensureFocus/applyFirstResponderIfNeeded to avoid stealing focus.
+    var composerIsActive: Bool = false
     private var deferredSearchOverlayMutationWorkItem: DispatchWorkItem?
     private var imageTransferIndicatorShowWorkItem: DispatchWorkItem?
     private var activeImageTransferOperation: TerminalImageTransferOperation?
@@ -10382,6 +10387,15 @@ final class GhosttySurfaceScrollView: NSView {
             return
         }
 
+        // Don't steal focus from a composer panel — proactive check (composer exists)
+        // plus reactive check (responder is inside composer view).
+        if composerIsActive {
+            return
+        }
+        if let fr = window.firstResponder, Self.isResponderInsideComposerView(fr) {
+            return
+        }
+
         if let fr = window.firstResponder as? NSView,
            fr === surfaceView || fr.isDescendant(of: surfaceView) {
             reassertTerminalSurfaceFocus(reason: "ensureFocus.alreadyFirstResponder")
@@ -10579,6 +10593,13 @@ final class GhosttySurfaceScrollView: NSView {
 #if DEBUG
             dlog("find.applyFirstResponder SKIP surface=\(surfaceShort) reason=searchOverlayFocused")
 #endif
+            return
+        }
+        // Don't steal focus from a composer panel — proactive + reactive.
+        if composerIsActive {
+            return
+        }
+        if let fr = window.firstResponder, Self.isResponderInsideComposerView(fr) {
             return
         }
 #if DEBUG
@@ -10831,6 +10852,25 @@ final class GhosttySurfaceScrollView: NSView {
             let typeName = String(describing: type(of: v))
             if typeName.contains("BrowserSearchOverlay") { return true }
             current = v.superview
+        }
+        return false
+    }
+
+    /// Check whether a responder is inside a ComposerInputView anywhere in the window.
+    /// Used to prevent terminal surfaces from stealing focus from the composer panel.
+    /// Static because the composer is rendered in the SwiftUI layer (TerminalPanelView),
+    /// not as an overlay inside GhosttySurfaceScrollView.
+    static func isResponderInsideComposerView(_ responder: NSResponder) -> Bool {
+        var view: NSView? = responder as? NSView
+        if view == nil, let tv = responder as? NSTextView {
+            view = tv
+        }
+        while let v = view {
+            let typeName = String(describing: type(of: v))
+            if typeName.contains("ComposerInputView") {
+                return true
+            }
+            view = v.superview
         }
         return false
     }
@@ -11789,6 +11829,7 @@ struct GhosttyTerminalView: NSViewRepresentable {
     var inactiveOverlayColor: NSColor = .clear
     var inactiveOverlayOpacity: Double = 0
     var searchState: TerminalSurface.SearchState? = nil
+    var isComposerActive: Bool = false
     var reattachToken: UInt64 = 0
     var onFocus: ((UUID) -> Void)? = nil
     var onTriggerFlash: (() -> Void)? = nil
@@ -11993,6 +12034,7 @@ struct GhosttyTerminalView: NSViewRepresentable {
             )
             hostedView.setNotificationRing(visible: showsUnreadNotificationRing)
             hostedView.setSearchOverlay(searchState: searchState)
+            hostedView.composerIsActive = isComposerActive
             hostedView.syncKeyStateIndicator(text: terminalSurface.currentKeyStateIndicatorText)
         }
         let portalExpectedSurfaceId = terminalSurface.id
