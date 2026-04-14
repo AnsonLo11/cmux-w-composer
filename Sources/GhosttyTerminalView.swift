@@ -10478,6 +10478,10 @@ final class GhosttySurfaceScrollView: NSView {
             scheduleAutomaticFirstResponderApply(reason: "clearSuppressReparentFocus.hiddenOrTiny")
             return
         }
+        // Don't reclaim focus while a composer panel is active.
+        if composerIsActive { return }
+        if let fr = window.firstResponder, Self.isResponderInsideComposerView(fr) { return }
+
         if !surfaceOwnsFirstResponder && !isSurfaceViewFirstResponder() {
 #if DEBUG
             dlog(
@@ -10516,6 +10520,10 @@ final class GhosttySurfaceScrollView: NSView {
     }
 
     private func reassertTerminalSurfaceFocus(reason: String) {
+        // Never reassert terminal focus while a composer panel is active.
+        if composerIsActive { return }
+        if let fr = window?.firstResponder, Self.isResponderInsideComposerView(fr) { return }
+
         guard let terminalSurface = surfaceView.terminalSurface else { return }
         if terminalSurface.surface == nil {
             terminalSurface.requestBackgroundSurfaceStartIfNeeded()
