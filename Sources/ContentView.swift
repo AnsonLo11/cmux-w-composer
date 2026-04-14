@@ -12165,9 +12165,9 @@ private struct SidebarDevFooter: View {
         VStack(alignment: .leading, spacing: 6) {
             SidebarFooterButtons(updateViewModel: updateViewModel, onSendFeedback: onSendFeedback)
             if showSidebarDevBuildBanner {
-                Text(String(localized: "debug.devBuildBanner.title", defaultValue: "THIS IS A DEV BUILD"))
+                Text("anson's")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.red)
+                    .foregroundColor(Color(red: 0, green: 0x88 / 255.0, blue: 1.0)) // #08F
             }
         }
         .padding(.leading, 6)

@@ -263,26 +263,27 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
         func insertImageAttachment(in textView: NSTextView, imageURL: URL, marker: String) {
             guard let textStorage = textView.textStorage else { return }
 
-            // Create a thumbnail (max 60pt tall)
-            let thumbnailHeight: CGFloat = 60
-            guard let originalImage = NSImage(contentsOf: imageURL) else {
-                // Fallback: insert text marker if image can't be loaded
-                let prefix = textView.string.isEmpty || textView.string.hasSuffix(" ") ? "" : " "
-                textView.insertText(prefix + marker + " ", replacementRange: textView.selectedRange())
-                return
-            }
-            let aspectRatio = originalImage.size.width / max(originalImage.size.height, 1)
-            let thumbnailWidth = thumbnailHeight * aspectRatio
-            let thumbnail = NSImage(size: NSSize(width: thumbnailWidth, height: thumbnailHeight))
-            thumbnail.lockFocus()
-            originalImage.draw(
-                in: NSRect(x: 0, y: 0, width: thumbnailWidth, height: thumbnailHeight),
-                from: .zero, operation: .sourceOver, fraction: 1.0
-            )
-            thumbnail.unlockFocus()
+            let originalImage = NSImage(contentsOf: imageURL)
 
-            // Build the attachment cell with rounded corners
-            let cell = ComposerImageAttachmentCell(image: thumbnail, marker: marker)
+            // Create a tiny color swatch (14x14) sampled from the image
+            let swatchSize: CGFloat = 14
+            let swatch = NSImage(size: NSSize(width: swatchSize, height: swatchSize))
+            swatch.lockFocus()
+            if let img = originalImage {
+                img.draw(
+                    in: NSRect(x: 0, y: 0, width: swatchSize, height: swatchSize),
+                    from: .zero, operation: .sourceOver, fraction: 1.0
+                )
+            } else {
+                NSColor.systemGray.setFill()
+                NSRect(x: 0, y: 0, width: swatchSize, height: swatchSize).fill()
+            }
+            swatch.unlockFocus()
+
+            // Build the inline pill cell
+            let cell = ComposerImageAttachmentCell(
+                swatch: swatch, marker: marker, fullImageURL: imageURL
+            )
 
             let attachment = NSTextAttachment()
             attachment.attachmentCell = cell
@@ -455,73 +456,77 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
     }
 }
 
-// MARK: - Image attachment cell with rounded corners and label
+// MARK: - Inline pill image attachment cell (swatch + label, hover for full preview)
 
 private final class ComposerImageAttachmentCell: NSTextAttachmentCell {
     let marker: String
-    private let padding: CGFloat = 4
-    private let cornerRadius: CGFloat = 6
-    private let labelHeight: CGFloat = 14
+    let fullImageURL: URL
+    private let swatch: NSImage
+    private let pillHeight: CGFloat = 18
+    private let swatchSize: CGFloat = 14
+    private let hPadding: CGFloat = 4
+    private let cornerRadius: CGFloat = 4
 
-    init(image: NSImage, marker: String) {
+    init(swatch: NSImage, marker: String, fullImageURL: URL) {
+        self.swatch = swatch
         self.marker = marker
-        super.init(imageCell: image)
+        self.fullImageURL = fullImageURL
+        super.init(imageCell: swatch)
     }
 
     @available(*, unavailable)
     required init(coder: NSCoder) { fatalError() }
 
     override func cellSize() -> NSSize {
-        guard let image else { return .zero }
-        let w = image.size.width + padding * 2
-        let h = image.size.height + labelHeight + padding * 3
-        return NSSize(width: w, height: h)
+        let labelWidth = (marker as NSString).size(
+            withAttributes: [.font: NSFont.systemFont(ofSize: 10, weight: .medium)]
+        ).width
+        let w = hPadding + swatchSize + 4 + labelWidth + hPadding
+        return NSSize(width: w, height: pillHeight)
     }
 
     override func cellBaselineOffset() -> NSPoint {
-        NSPoint(x: 0, y: -4)
+        NSPoint(x: 0, y: -3)
     }
 
     override func draw(withFrame cellFrame: NSRect, in controlView: NSView?) {
-        guard let image else { return }
+        let rect = cellFrame
 
-        let totalRect = cellFrame
-
-        // Background rounded rect
-        let bgPath = NSBezierPath(roundedRect: totalRect, xRadius: cornerRadius, yRadius: cornerRadius)
+        // Pill background
+        let bgPath = NSBezierPath(roundedRect: rect, xRadius: cornerRadius, yRadius: cornerRadius)
         NSColor.secondarySystemFill.setFill()
         bgPath.fill()
 
-        // Image area (top portion)
-        let imageRect = NSRect(
-            x: totalRect.origin.x + padding,
-            y: totalRect.origin.y + labelHeight + padding * 2,
-            width: image.size.width,
-            height: image.size.height
+        // Swatch (left side, vertically centered)
+        let swatchY = rect.origin.y + (rect.height - swatchSize) / 2
+        let swatchRect = NSRect(
+            x: rect.origin.x + hPadding,
+            y: swatchY,
+            width: swatchSize,
+            height: swatchSize
         )
-        let clipPath = NSBezierPath(
-            roundedRect: imageRect,
-            xRadius: cornerRadius - 2,
-            yRadius: cornerRadius - 2
-        )
+        let swatchClip = NSBezierPath(roundedRect: swatchRect, xRadius: 2, yRadius: 2)
         NSGraphicsContext.current?.saveGraphicsState()
-        clipPath.addClip()
-        image.draw(in: imageRect, from: .zero, operation: .sourceOver, fraction: 1.0)
+        swatchClip.addClip()
+        swatch.draw(in: swatchRect, from: .zero, operation: .sourceOver, fraction: 1.0)
         NSGraphicsContext.current?.restoreGraphicsState()
 
-        // Label at bottom
+        // Label (right of swatch)
+        let labelX = rect.origin.x + hPadding + swatchSize + 4
         let labelRect = NSRect(
-            x: totalRect.origin.x + padding,
-            y: totalRect.origin.y + padding,
-            width: totalRect.width - padding * 2,
-            height: labelHeight
+            x: labelX,
+            y: rect.origin.y + 2,
+            width: rect.width - (labelX - rect.origin.x) - hPadding,
+            height: pillHeight - 4
         )
         let attrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 9, weight: .medium),
+            .font: NSFont.systemFont(ofSize: 10, weight: .medium),
             .foregroundColor: NSColor.secondaryLabelColor,
         ]
         (marker as NSString).draw(in: labelRect, withAttributes: attrs)
     }
+
+    override func wantsToTrackMouse() -> Bool { true }
 }
 
 // MARK: - NSTextView subclass with placeholder text, image paste, and drag-drop
@@ -530,6 +535,8 @@ private final class ComposerNSTextView: NSTextView {
     var placeholderText: String = ""
     var onBecomeFirstResponder: (() -> Void)?
     var onImagePasted: (() -> Void)?
+    private var imagePopover: NSPopover?
+    private var hoverTrackingArea: NSTrackingArea?
 
     // Declare that this text view can accept image pasteboard types.
     // Without this, Paste is grayed out when the clipboard has only image data
@@ -620,6 +627,99 @@ private final class ComposerNSTextView: NSTextView {
         case .reject:
             return super.performDragOperation(sender)
         }
+    }
+
+    // MARK: - Image hover preview
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let existing = hoverTrackingArea {
+            removeTrackingArea(existing)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseMoved, .activeInKeyWindow, .inVisibleRect],
+            owner: self
+        )
+        addTrackingArea(area)
+        hoverTrackingArea = area
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        let charIndex = characterIndexForInsertion(at: point)
+
+        guard charIndex < (string as NSString).length else {
+            dismissImagePopover()
+            super.mouseMoved(with: event)
+            return
+        }
+
+        // Check if character at index is an attachment (U+FFFC)
+        let ch = (string as NSString).character(at: charIndex)
+        guard ch == 0xFFFC,
+              let textStorage = textStorage,
+              let attachment = textStorage.attribute(.attachment, at: charIndex, effectiveRange: nil) as? NSTextAttachment,
+              let cell = attachment.attachmentCell as? ComposerImageAttachmentCell else {
+            dismissImagePopover()
+            super.mouseMoved(with: event)
+            return
+        }
+
+        // Already showing popover for this attachment
+        if imagePopover?.isShown == true { return }
+
+        showImagePopover(for: cell.fullImageURL, at: charIndex)
+    }
+
+    private func showImagePopover(for imageURL: URL, at charIndex: Int) {
+        guard let image = NSImage(contentsOf: imageURL) else { return }
+
+        let maxPreviewSize: CGFloat = 240
+        let aspect = image.size.width / max(image.size.height, 1)
+        let previewW: CGFloat
+        let previewH: CGFloat
+        if aspect > 1 {
+            previewW = maxPreviewSize
+            previewH = maxPreviewSize / aspect
+        } else {
+            previewH = maxPreviewSize
+            previewW = maxPreviewSize * aspect
+        }
+
+        let imageView = NSImageView(frame: NSRect(x: 8, y: 8, width: previewW, height: previewH))
+        imageView.image = image
+        imageView.imageScaling = .scaleProportionallyUpOrDown
+
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: previewW + 16, height: previewH + 16))
+        container.addSubview(imageView)
+
+        let vc = NSViewController()
+        vc.view = container
+
+        let popover = NSPopover()
+        popover.contentViewController = vc
+        popover.contentSize = container.frame.size
+        popover.behavior = .semitransient
+        popover.animates = true
+
+        // Get the rect for the attachment character
+        let glyphRange = layoutManager?.glyphRange(forCharacterRange: NSRange(location: charIndex, length: 1), actualCharacterRange: nil) ?? NSRange(location: charIndex, length: 1)
+        let lineRect = layoutManager?.boundingRect(forGlyphRange: glyphRange, in: textContainer!) ?? .zero
+        let attachRect = NSRect(
+            x: lineRect.origin.x + textContainerInset.width,
+            y: lineRect.origin.y + textContainerInset.height,
+            width: max(lineRect.width, 20),
+            height: max(lineRect.height, 18)
+        )
+
+        imagePopover = popover
+        popover.show(relativeTo: attachRect, of: self, preferredEdge: .maxY)
+    }
+
+    private func dismissImagePopover() {
+        imagePopover?.performClose(nil)
+        imagePopover = nil
     }
 }
 
