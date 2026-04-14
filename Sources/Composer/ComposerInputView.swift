@@ -198,7 +198,9 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: ComposerTextViewRepresentable
         var isProgrammaticMutation = false
-        var hasAppliedInitialFocus = false
+        /// Tracks which ComposerState instance we last focused for.
+        /// When a new state appears (Composer reopened), we re-focus.
+        var lastFocusedStateID: ObjectIdentifier?
 
         init(parent: ComposerTextViewRepresentable) {
             self.parent = parent
@@ -487,13 +489,15 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
             context.coordinator.isProgrammaticMutation = false
         }
 
-        if !context.coordinator.hasAppliedInitialFocus,
+        // Re-focus whenever a new ComposerState appears (Composer reopened).
+        let currentStateID = ObjectIdentifier(composerState)
+        if context.coordinator.lastFocusedStateID != currentStateID,
            let window = nsView.window,
            textView.superview != nil {
-            context.coordinator.hasAppliedInitialFocus = true
+            context.coordinator.lastFocusedStateID = currentStateID
             // Claim focus with multiple attempts to handle timing:
-            // 1. Sync: immediate claim (might be too early for window hierarchy)
-            // 2. Async: next run loop (composerIsActive flag should be set by now)
+            // 1. Sync: immediate claim
+            // 2. Async: next run loop (composerIsActive flag should be set)
             // 3. Delayed: after terminal focus reclamation has settled
             window.makeFirstResponder(textView)
             DispatchQueue.main.async { [weak textView] in
