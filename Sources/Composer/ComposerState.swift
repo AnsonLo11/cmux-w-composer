@@ -27,19 +27,34 @@ final class ComposerState: ObservableObject {
         let index = nextImageIndex
         nextImageIndex += 1
         attachedImages[index] = url
+        imageInsertionOrder.append(index)
         return "[IMAGE #\(index)]"
     }
 
-    /// Resolve the display text to sendable text by replacing [IMAGE #N] markers with file paths.
+    /// Resolve the display text to sendable text by replacing image references with file paths.
+    /// Handles both [IMAGE #N] text markers and U+FFFC attachment characters.
     func resolvedTextForSending() -> String {
         var result = text
+        // Replace [IMAGE #N] text markers (fallback path)
         for (index, url) in attachedImages {
             let marker = "[IMAGE #\(index)]"
             let path = GhosttyPasteboardHelper.escapeForShell(url.path)
             result = result.replacingOccurrences(of: marker, with: path)
         }
+        // Replace U+FFFC attachment characters (thumbnail path).
+        // Attachments appear in text order; imageInsertionOrder tracks which image each one is.
+        let attachmentChar = "\u{FFFC}"
+        for index in imageInsertionOrder {
+            guard let url = attachedImages[index],
+                  let range = result.range(of: attachmentChar) else { continue }
+            let path = GhosttyPasteboardHelper.escapeForShell(url.path)
+            result = result.replacingCharacters(in: range, with: path)
+        }
         return result
     }
+
+    /// Tracks the order images were inserted (for resolving U+FFFC attachment chars in order).
+    private(set) var imageInsertionOrder: [Int] = []
 
     // MARK: - Image saving
 

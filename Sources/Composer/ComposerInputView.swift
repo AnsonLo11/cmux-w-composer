@@ -258,6 +258,53 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
             return false
         }
 
+        // MARK: - Image attachment
+
+        func insertImageAttachment(in textView: NSTextView, imageURL: URL, marker: String) {
+            guard let textStorage = textView.textStorage else { return }
+
+            // Create a thumbnail (max 60pt tall)
+            let thumbnailHeight: CGFloat = 60
+            guard let originalImage = NSImage(contentsOf: imageURL) else {
+                // Fallback: insert text marker if image can't be loaded
+                let prefix = textView.string.isEmpty || textView.string.hasSuffix(" ") ? "" : " "
+                textView.insertText(prefix + marker + " ", replacementRange: textView.selectedRange())
+                return
+            }
+            let aspectRatio = originalImage.size.width / max(originalImage.size.height, 1)
+            let thumbnailWidth = thumbnailHeight * aspectRatio
+            let thumbnail = NSImage(size: NSSize(width: thumbnailWidth, height: thumbnailHeight))
+            thumbnail.lockFocus()
+            originalImage.draw(
+                in: NSRect(x: 0, y: 0, width: thumbnailWidth, height: thumbnailHeight),
+                from: .zero, operation: .sourceOver, fraction: 1.0
+            )
+            thumbnail.unlockFocus()
+
+            // Build the attachment cell with rounded corners
+            let cell = ComposerImageAttachmentCell(image: thumbnail, marker: marker)
+
+            let attachment = NSTextAttachment()
+            attachment.attachmentCell = cell
+
+            // Insert space + attachment + space
+            let insertionPoint = textView.selectedRange()
+            isProgrammaticMutation = true
+            let prefix = textView.string.isEmpty || textView.string.hasSuffix(" ") ? "" : " "
+            if !prefix.isEmpty {
+                textStorage.insert(NSAttributedString(string: prefix), at: insertionPoint.location)
+            }
+            let attachPos = insertionPoint.location + prefix.count
+            let attachStr = NSAttributedString(attachment: attachment)
+            textStorage.insert(attachStr, at: attachPos)
+            textStorage.insert(NSAttributedString(string: " "), at: attachPos + 1)
+            isProgrammaticMutation = false
+
+            // Sync text state (attachment char is U+FFFC in the string)
+            parent.composerState.text = textView.string
+            textView.setSelectedRange(NSRange(location: attachPos + 2, length: 0))
+        }
+
         // MARK: - Slash completion logic
 
         func updateSlashCompletion(text: String) {
@@ -363,12 +410,15 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
         textView.onBecomeFirstResponder = { [weak coordinator = context.coordinator] in
             coordinator?.parent.onBecomeFirstResponder()
         }
-        textView.onImagePasted = {
+        textView.onImagePasted = { [weak textView] in
+            guard let textView else { return }
             let state = context.coordinator.parent.composerState
             if let imageURL = state.saveImageFromPasteboard() {
                 let marker = state.addImage(url: imageURL)
-                let prefix = state.text.isEmpty || state.text.hasSuffix(" ") ? "" : " "
-                state.text += prefix + marker + " "
+                // Insert thumbnail attachment into text view
+                context.coordinator.insertImageAttachment(
+                    in: textView, imageURL: imageURL, marker: marker
+                )
             }
         }
         textView.setAccessibilityLabel(placeholder)
@@ -402,6 +452,75 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
                 window.makeFirstResponder(textView)
             }
         }
+    }
+}
+
+// MARK: - Image attachment cell with rounded corners and label
+
+private final class ComposerImageAttachmentCell: NSTextAttachmentCell {
+    let marker: String
+    private let padding: CGFloat = 4
+    private let cornerRadius: CGFloat = 6
+    private let labelHeight: CGFloat = 14
+
+    init(image: NSImage, marker: String) {
+        self.marker = marker
+        super.init(imageCell: image)
+    }
+
+    @available(*, unavailable)
+    required init(coder: NSCoder) { fatalError() }
+
+    override func cellSize() -> NSSize {
+        guard let image else { return .zero }
+        let w = image.size.width + padding * 2
+        let h = image.size.height + labelHeight + padding * 3
+        return NSSize(width: w, height: h)
+    }
+
+    override func cellBaselineOffset() -> NSPoint {
+        NSPoint(x: 0, y: -4)
+    }
+
+    override func draw(withFrame cellFrame: NSRect, in controlView: NSView?) {
+        guard let image else { return }
+
+        let totalRect = cellFrame
+
+        // Background rounded rect
+        let bgPath = NSBezierPath(roundedRect: totalRect, xRadius: cornerRadius, yRadius: cornerRadius)
+        NSColor.secondarySystemFill.setFill()
+        bgPath.fill()
+
+        // Image area (top portion)
+        let imageRect = NSRect(
+            x: totalRect.origin.x + padding,
+            y: totalRect.origin.y + labelHeight + padding * 2,
+            width: image.size.width,
+            height: image.size.height
+        )
+        let clipPath = NSBezierPath(
+            roundedRect: imageRect,
+            xRadius: cornerRadius - 2,
+            yRadius: cornerRadius - 2
+        )
+        NSGraphicsContext.current?.saveGraphicsState()
+        clipPath.addClip()
+        image.draw(in: imageRect, from: .zero, operation: .sourceOver, fraction: 1.0)
+        NSGraphicsContext.current?.restoreGraphicsState()
+
+        // Label at bottom
+        let labelRect = NSRect(
+            x: totalRect.origin.x + padding,
+            y: totalRect.origin.y + padding,
+            width: totalRect.width - padding * 2,
+            height: labelHeight
+        )
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 9, weight: .medium),
+            .foregroundColor: NSColor.secondaryLabelColor,
+        ]
+        (marker as NSString).draw(in: labelRect, withAttributes: attrs)
     }
 }
 
