@@ -8431,6 +8431,7 @@ extension Notification.Name {
     static let ghosttyDefaultBackgroundDidChange = Notification.Name("ghosttyDefaultBackgroundDidChange")
     static let browserSearchFocus = Notification.Name("browserSearchFocus")
     static let cmuxComposerDidSend = Notification.Name("cmuxComposerDidSend")
+    static let cmuxComposerDidSendAndSubmit = Notification.Name("cmuxComposerDidSendAndSubmit")
     static let cmuxComposerDidDismiss = Notification.Name("cmuxComposerDidDismiss")
 }
 

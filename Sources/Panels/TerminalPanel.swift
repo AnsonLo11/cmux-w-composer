@@ -136,11 +136,15 @@ final class TerminalPanel: Panel, ObservableObject {
         composerState = nil
     }
 
-    func sendComposerText() {
+    func sendComposerText(submit: Bool = false) {
         guard let state = composerState else { return }
         let content = state.resolvedTextForSending()
         guard !content.isEmpty else { return }
         surface.sendInput(content)
+        if submit {
+            // Send Enter key so CC processes the prompt immediately
+            surface.sendInput("\n")
+        }
         savedComposerDraft = ""
         composerState = nil
     }

@@ -4,7 +4,10 @@ import UniformTypeIdentifiers
 
 struct ComposerInputView: View {
     @ObservedObject var composerState: ComposerState
+    /// Send text to terminal input (Enter). Text appears in CC but is not submitted.
     let onSend: (String) -> Void
+    /// Send text AND submit to CC (Cmd+Enter). Appends a newline so CC processes the prompt.
+    let onSendAndSubmit: (String) -> Void
     let onDismiss: () -> Void
     let onTextViewBecameFirstResponder: () -> Void
 
@@ -51,6 +54,11 @@ struct ComposerInputView: View {
                         guard !content.isEmpty else { return }
                         onSend(content)
                     },
+                    onSendAndSubmit: {
+                        let content = composerState.text
+                        guard !content.isEmpty else { return }
+                        onSendAndSubmit(content)
+                    },
                     onDismiss: onDismiss,
                     onBecomeFirstResponder: onTextViewBecameFirstResponder,
                     onInsertCommand: { command in
@@ -76,11 +84,11 @@ struct ComposerInputView: View {
 
                     Spacer()
 
-                    // Send button
+                    // Send button (same as Enter: send to terminal input)
                     Button(action: {
                         let content = composerState.text
                         guard !content.isEmpty else { return }
-                        onSend(content)
+                        onSendAndSubmit(content)
                     }) {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.system(size: 28))
@@ -182,6 +190,7 @@ struct ComposerInputView: View {
 private struct ComposerTextViewRepresentable: NSViewRepresentable {
     @ObservedObject var composerState: ComposerState
     let onSend: () -> Void
+    let onSendAndSubmit: () -> Void
     let onDismiss: () -> Void
     let onBecomeFirstResponder: () -> Void
     let onInsertCommand: (SlashCommand) -> Void
@@ -253,7 +262,16 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
                     return true
                 }
             }
-            // Plain Enter inserts newline (default behavior)
+            // Enter key handling (when completion popup is NOT visible):
+            // Shift+Enter → insert newline (default behavior)
+            // Plain Enter → send text to terminal
+            if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                if let event = NSApp.currentEvent, event.modifierFlags.contains(.shift) {
+                    return false // let NSTextView insert newline
+                }
+                parent.onSend()
+                return true
+            }
             // Cmd+Enter is handled via performKeyEquivalent on the scroll view subclass
             return false
         }
@@ -428,7 +446,7 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
 
         scrollView.documentView = textView
         scrollView.onCmdEnter = { [weak coordinator = context.coordinator] in
-            coordinator?.parent.onSend()
+            coordinator?.parent.onSendAndSubmit()
         }
 
         return scrollView
@@ -729,6 +747,7 @@ private final class ComposerScrollView: NSScrollView {
     var onCmdEnter: (() -> Void)?
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        // Cmd+Enter → send and submit (press Enter in CC too)
         if event.type == .keyDown,
            event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
            event.keyCode == 0x24 {

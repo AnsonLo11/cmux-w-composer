@@ -55,6 +55,13 @@ struct TerminalPanelView: View {
                             object: surface
                         )
                     },
+                    onSendAndSubmit: { [weak surface = panel.surface] _ in
+                        guard let surface else { return }
+                        NotificationCenter.default.post(
+                            name: .cmuxComposerDidSendAndSubmit,
+                            object: surface
+                        )
+                    },
                     onDismiss: { [weak surface = panel.surface] in
                         guard let surface else { return }
                         NotificationCenter.default.post(

@@ -1070,6 +1070,17 @@ class TabManager: ObservableObject {
             }
         })
         observers.append(NotificationCenter.default.addObserver(
+            forName: .cmuxComposerDidSendAndSubmit,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            MainActor.assumeIsolated { [weak self] in
+                guard let self,
+                      let surface = notification.object as? TerminalSurface else { return }
+                terminalPanel(tabId: surface.tabId, panelId: surface.id)?.sendComposerText(submit: true)
+            }
+        })
+        observers.append(NotificationCenter.default.addObserver(
             forName: .cmuxComposerDidDismiss,
             object: nil,
             queue: .main
