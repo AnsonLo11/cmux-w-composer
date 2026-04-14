@@ -140,6 +140,8 @@ final class TerminalPanel: Panel, ObservableObject {
         guard let state = composerState else { return }
         let content = state.resolvedTextForSending()
         guard !content.isEmpty else { return }
+        // Record in history before sending
+        ComposerState.recordSentText(state.text)
         surface.sendInput(content)
         if submit {
             // Send Enter key so CC processes the prompt immediately

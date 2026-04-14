@@ -18,8 +18,66 @@ final class ComposerState: ObservableObject {
     /// Next image index (increments per composer session).
     private(set) var nextImageIndex: Int = 1
 
+    /// Current position in history navigation (-1 = not browsing history).
+    var historyIndex: Int = -1
+    /// Saved current text when user enters history mode.
+    var savedCurrentText: String = ""
+
     init(text: String = "") {
         self.text = text
+    }
+
+    // MARK: - Send history (persists across Composer sessions)
+
+    /// Shared history of sent prompts (most recent last).
+    private static var sendHistory: [String] = []
+    private static let maxHistoryCount = 50
+
+    /// Record a sent prompt in history.
+    static func recordSentText(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        // Avoid consecutive duplicates
+        if sendHistory.last != trimmed {
+            sendHistory.append(trimmed)
+            if sendHistory.count > maxHistoryCount {
+                sendHistory.removeFirst()
+            }
+        }
+    }
+
+    /// Navigate history. Returns the text to show, or nil if at boundary.
+    func historyUp() -> String? {
+        let history = Self.sendHistory
+        guard !history.isEmpty else { return nil }
+        if historyIndex == -1 {
+            // Entering history mode: save current text
+            savedCurrentText = text
+            historyIndex = history.count - 1
+        } else if historyIndex > 0 {
+            historyIndex -= 1
+        } else {
+            return nil // already at oldest
+        }
+        return history[historyIndex]
+    }
+
+    func historyDown() -> String? {
+        let history = Self.sendHistory
+        guard historyIndex >= 0 else { return nil }
+        if historyIndex < history.count - 1 {
+            historyIndex += 1
+            return history[historyIndex]
+        } else {
+            // Back to current unsent text
+            historyIndex = -1
+            return savedCurrentText
+        }
+    }
+
+    func resetHistoryNavigation() {
+        historyIndex = -1
+        savedCurrentText = ""
     }
 
     /// Add an image, returns the marker string to insert (e.g. "[IMAGE #1]").

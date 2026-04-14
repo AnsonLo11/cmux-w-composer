@@ -208,6 +208,8 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
             guard !isProgrammaticMutation else { return }
             guard let textView = notification.object as? NSTextView else { return }
             parent.composerState.text = textView.string
+            // Reset history navigation when user types (not when browsing history)
+            parent.composerState.resetHistoryNavigation()
             updateSlashCompletion(text: textView.string)
             applySlashCommandHighlighting(textView: textView)
         }
@@ -261,6 +263,28 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
                     }
                     return true
                 }
+            }
+            // Up/Down when text is empty: browse send history
+            if commandSelector == #selector(NSResponder.moveUp(_:)) {
+                let state = parent.composerState
+                if state.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    || state.historyIndex >= 0 {
+                    if let historyText = state.historyUp() {
+                        state.text = historyText
+                        return true
+                    }
+                }
+                return false // let NSTextView handle cursor movement
+            }
+            if commandSelector == #selector(NSResponder.moveDown(_:)) {
+                let state = parent.composerState
+                if state.historyIndex >= 0 {
+                    if let historyText = state.historyDown() {
+                        state.text = historyText
+                        return true
+                    }
+                }
+                return false
             }
             // Enter key handling (when completion popup is NOT visible):
             // Shift+Enter → insert newline (default behavior)
@@ -467,6 +491,10 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
            let window = nsView.window,
            textView.superview != nil {
             context.coordinator.hasAppliedInitialFocus = true
+            // Claim focus immediately and also after a short delay to ensure
+            // the view hierarchy is fully established (panel-based composer may
+            // not be in the responder chain on the first updateNSView pass).
+            window.makeFirstResponder(textView)
             DispatchQueue.main.async {
                 window.makeFirstResponder(textView)
             }
