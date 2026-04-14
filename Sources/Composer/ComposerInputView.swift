@@ -531,6 +531,16 @@ private final class ComposerNSTextView: NSTextView {
     var onBecomeFirstResponder: (() -> Void)?
     var onImagePasted: (() -> Void)?
 
+    // Declare that this text view can accept image pasteboard types.
+    // Without this, Paste is grayed out when the clipboard has only image data
+    // (isRichText=false means the default only accepts .string).
+    override var readablePasteboardTypes: [NSPasteboard.PasteboardType] {
+        var types = super.readablePasteboardTypes
+        if !types.contains(.tiff) { types.append(.tiff) }
+        if !types.contains(.png) { types.append(.png) }
+        return types
+    }
+
     override func becomeFirstResponder() -> Bool {
         let result = super.becomeFirstResponder()
         if result { onBecomeFirstResponder?() }
