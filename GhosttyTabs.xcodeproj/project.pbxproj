@@ -139,6 +139,8 @@
 					8C4BBF2DEF6DF93F395A9EE7 /* TerminalControllerSocketSecurityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 491751CE2321474474F27DCF /* TerminalControllerSocketSecurityTests.swift */; };
 					2BB56A710BB1FC50367E5BCF /* TabManagerSessionSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10D684CFFB8CDEF89CE2D9E1 /* TabManagerSessionSnapshotTests.swift */; };
 					C1A2B3C4D5E6F70800000001 /* CmuxConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A2B3C4D5E6F70800000002 /* CmuxConfigTests.swift */; };
+					F1C0010200000000A1B2C3D4 /* ComposerFocusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1C0010100000000A1B2C3D4 /* ComposerFocusTests.swift */; };
+					F1C0010400000000A1B2C3D4 /* ComposerDismissTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1C0010300000000A1B2C3D4 /* ComposerDismissTests.swift */; };
 		/* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -342,6 +344,8 @@
 				491751CE2321474474F27DCF /* TerminalControllerSocketSecurityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalControllerSocketSecurityTests.swift; sourceTree = "<group>"; };
 				10D684CFFB8CDEF89CE2D9E1 /* TabManagerSessionSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabManagerSessionSnapshotTests.swift; sourceTree = "<group>"; };
 				C1A2B3C4D5E6F70800000002 /* CmuxConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CmuxConfigTests.swift; sourceTree = "<group>"; };
+				F1C0010100000000A1B2C3D4 /* ComposerFocusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerFocusTests.swift; sourceTree = "<group>"; };
+				F1C0010300000000A1B2C3D4 /* ComposerDismissTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerDismissTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -628,8 +632,18 @@
 					491751CE2321474474F27DCF /* TerminalControllerSocketSecurityTests.swift */,
 					10D684CFFB8CDEF89CE2D9E1 /* TabManagerSessionSnapshotTests.swift */,
 					C1A2B3C4D5E6F70800000002 /* CmuxConfigTests.swift */,
+					F1C0010000000000A1B2C3D4 /* Composer */,
 				);
 				path = cmuxTests;
+				sourceTree = "<group>";
+			};
+			F1C0010000000000A1B2C3D4 /* Composer */ = {
+				isa = PBXGroup;
+				children = (
+					F1C0010100000000A1B2C3D4 /* ComposerFocusTests.swift */,
+					F1C0010300000000A1B2C3D4 /* ComposerDismissTests.swift */,
+				);
+				path = Composer;
 				sourceTree = "<group>";
 			};
 /* End PBXGroup section */
@@ -932,6 +946,8 @@
 					8C4BBF2DEF6DF93F395A9EE7 /* TerminalControllerSocketSecurityTests.swift in Sources */,
 					2BB56A710BB1FC50367E5BCF /* TabManagerSessionSnapshotTests.swift in Sources */,
 					C1A2B3C4D5E6F70800000001 /* CmuxConfigTests.swift in Sources */,
+					F1C0010200000000A1B2C3D4 /* ComposerFocusTests.swift in Sources */,
+					F1C0010400000000A1B2C3D4 /* ComposerDismissTests.swift in Sources */,
 				);
 				runOnlyForDeploymentPostprocessing = 0;
 			};

@@ -475,6 +475,13 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
             coordinator?.parent.onSendAndSubmit()
         }
 
+        // Arm the viewDidMoveToWindow tripwire so the textView grabs first
+        // responder the moment the SwiftUI tree finishes mounting it in a
+        // window. Belt-and-braces with the makeFirstResponder calls in
+        // updateNSView; necessary because SwiftUI's first updateNSView can
+        // fire before nsView.window is set, in which case those calls bail.
+        textView.pendingAutoFocusOnWindowAttach = true
+
         return scrollView
     }
 
@@ -492,22 +499,32 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
         // Re-focus whenever a new ComposerState appears (Composer reopened).
         let currentStateID = ObjectIdentifier(composerState)
         if context.coordinator.lastFocusedStateID != currentStateID,
-           let window = nsView.window,
            textView.superview != nil {
             context.coordinator.lastFocusedStateID = currentStateID
-            // Claim focus with multiple attempts to handle timing:
-            // 1. Sync: immediate claim
-            // 2. Async: next run loop (composerIsActive flag should be set)
-            // 3. Delayed: after terminal focus reclamation has settled
-            window.makeFirstResponder(textView)
-            DispatchQueue.main.async { [weak textView] in
-                guard let textView, let window = textView.window else { return }
+            // Always arm the viewDidMoveToWindow tripwire — it is the only
+            // signal that fires deterministically once SwiftUI has mounted
+            // the text view inside a window. Without this we would lose
+            // focus when SwiftUI's first updateNSView happens before the
+            // scroll view is in a window (the if-let below would skip the
+            // immediate claim and no further updateNSView would fire).
+            textView.pendingAutoFocusOnWindowAttach = true
+            if let window = nsView.window {
+                // Claim focus with multiple attempts to handle timing:
+                // 1. Sync: immediate claim
+                // 2. Async: next run loop (composerIsActive flag should be set)
+                // 3. Delayed: after terminal focus reclamation has settled
                 window.makeFirstResponder(textView)
+                DispatchQueue.main.async { [weak textView] in
+                    guard let textView, let window = textView.window else { return }
+                    window.makeFirstResponder(textView)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak textView] in
+                    guard let textView, let window = textView.window else { return }
+                    window.makeFirstResponder(textView)
+                }
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak textView] in
-                guard let textView, let window = textView.window else { return }
-                window.makeFirstResponder(textView)
-            }
+            // If window is nil, viewDidMoveToWindow will fire the claim once
+            // the SwiftUI hierarchy finishes mounting.
         }
     }
 }
@@ -591,8 +608,27 @@ private final class ComposerNSTextView: NSTextView {
     var placeholderText: String = ""
     var onBecomeFirstResponder: (() -> Void)?
     var onImagePasted: (() -> Void)?
+    /// Set by `ComposerTextViewRepresentable.makeNSView` (and re-armed by
+    /// updateNSView when a fresh ComposerState appears). Causes the next
+    /// `viewDidMoveToWindow` callback to claim firstResponder, which is the
+    /// only reliable signal that the SwiftUI tree has finished mounting this
+    /// text view inside its window.
+    ///
+    /// Why we need this: SwiftUI's first `updateNSView` call can fire while
+    /// `nsView.window` is still nil — the auto-focus path there bails, and no
+    /// further `updateNSView` calls fire because nothing on `composerState`
+    /// changes. Without this tripwire, the composer never grabs first
+    /// responder and the user's typing/paste falls through to the terminal.
+    var pendingAutoFocusOnWindowAttach: Bool = false
     private var imagePopover: NSPopover?
     private var hoverTrackingArea: NSTrackingArea?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard pendingAutoFocusOnWindowAttach, let window = self.window else { return }
+        pendingAutoFocusOnWindowAttach = false
+        window.makeFirstResponder(self)
+    }
 
     // Declare that this text view can accept image pasteboard types.
     // Without this, Paste is grayed out when the clipboard has only image data
