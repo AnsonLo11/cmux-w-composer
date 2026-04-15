@@ -63,30 +63,40 @@ struct ComposerInputView: View {
                 // Drag handle for resizing
                 composerDragHandle
 
-                // Text input area (full width)
-                ComposerTextViewRepresentable(
-                    composerState: composerState,
-                    onSend: {
-                        let content = composerState.text
-                        guard !content.isEmpty else { return }
-                        onSend(content)
-                    },
-                    onSendAndSubmit: {
-                        let content = composerState.text
-                        guard !content.isEmpty else { return }
-                        onSendAndSubmit(content)
-                    },
-                    onDismiss: onDismiss,
-                    onBecomeFirstResponder: onTextViewBecameFirstResponder,
-                    onInsertCommand: { command in
-                        insertCompletedCommand(command)
-                    },
-                    onInsertFile: { entry in
-                        insertCompletedFile(entry)
-                    },
-                    cwdProvider: cwdProvider
-                )
-                .frame(height: effectiveHeight)
+                // Text input area — bash mode adds an inline ❯ prompt.
+                HStack(alignment: .top, spacing: 0) {
+                    if composerState.bashMode {
+                        Text("\u{276F}") // ❯
+                            .font(.system(size: 14, weight: .medium, design: .monospaced))
+                            .foregroundStyle(Self.bashAccent)
+                            .padding(.leading, 12)
+                            .padding(.top, 10)
+                            .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                    }
+                    ComposerTextViewRepresentable(
+                        composerState: composerState,
+                        onSend: {
+                            let content = composerState.text
+                            guard !content.isEmpty else { return }
+                            onSend(content)
+                        },
+                        onSendAndSubmit: {
+                            let content = composerState.text
+                            guard !content.isEmpty else { return }
+                            onSendAndSubmit(content)
+                        },
+                        onDismiss: onDismiss,
+                        onBecomeFirstResponder: onTextViewBecameFirstResponder,
+                        onInsertCommand: { command in
+                            insertCompletedCommand(command)
+                        },
+                        onInsertFile: { entry in
+                            insertCompletedFile(entry)
+                        },
+                        cwdProvider: cwdProvider
+                    )
+                    .frame(height: effectiveHeight)
+                }
 
                 // Bottom toolbar: + button on left, send button on right
                 HStack(spacing: 0) {
@@ -113,11 +123,7 @@ struct ComposerInputView: View {
                     }) {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.system(size: 28))
-                            .foregroundStyle(
-                                composerState.text.isEmpty
-                                    ? Color.primary.opacity(0.15)
-                                    : Color.primary.opacity(0.5)
-                            )
+                            .foregroundStyle(sendButtonForeground)
                     }
                     .buttonStyle(.plain)
                     .disabled(composerState.text.isEmpty)
@@ -129,18 +135,84 @@ struct ComposerInputView: View {
                 }
                 .padding(.vertical, 6)
             }
-            .background(.background.opacity(0.97))
+            .background(composerBackground)
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
+                    .strokeBorder(
+                        composerState.bashMode
+                            ? Self.bashAccent.opacity(0.55)
+                            : Color.primary.opacity(0.1),
+                        lineWidth: composerState.bashMode ? 1.5 : 1
+                    )
             )
-            .shadow(color: .black.opacity(0.06), radius: 3, y: 1)
+            .shadow(
+                color: composerState.bashMode
+                    ? Self.bashAccent.opacity(0.35)
+                    : .black.opacity(0.06),
+                radius: composerState.bashMode ? 10 : 3,
+                y: 1
+            )
             .padding(.horizontal, 8)
             .padding(.bottom, 6)
+            .animation(.easeInOut(duration: 0.22), value: composerState.bashMode)
         }
         .onAppear {
             SlashCommandRegistry.shared.reloadIfNeeded()
+        }
+    }
+
+    // MARK: - Bash-mode visual chrome
+
+    /// Accent color used for the ❯ prompt, glow border, and drop shadow in
+    /// bash mode. Mint/cyan (#2EE59D) to read as "terminal" without clashing
+    /// with standard SwiftUI blues.
+    private static let bashAccent = Color(
+        red: 0x2E / 255.0, green: 0xE5 / 255.0, blue: 0x9D / 255.0
+    )
+
+    @ViewBuilder
+    private var composerBackground: some View {
+        if composerState.bashMode {
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        Color(red: 0x0D / 255.0, green: 0x11 / 255.0, blue: 0x17 / 255.0), // #0D1117
+                        Color(red: 0x16 / 255.0, green: 0x1B / 255.0, blue: 0x22 / 255.0)  // #161B22
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                // Subtle noise overlay so the flat gradient doesn't look plastic.
+                Canvas { ctx, size in
+                    let count = Int(size.width * size.height / 900)
+                    for _ in 0..<count {
+                        let x = Double.random(in: 0..<size.width)
+                        let y = Double.random(in: 0..<size.height)
+                        let alpha = Double.random(in: 0.015...0.05)
+                        ctx.fill(
+                            Path(ellipseIn: CGRect(x: x, y: y, width: 0.7, height: 0.7)),
+                            with: .color(.white.opacity(alpha))
+                        )
+                    }
+                }
+                .allowsHitTesting(false)
+            }
+            .transition(.opacity)
+        } else {
+            Color.clear.background(.background.opacity(0.97))
+        }
+    }
+
+    private var sendButtonForeground: Color {
+        if composerState.text.isEmpty {
+            return composerState.bashMode
+                ? Self.bashAccent.opacity(0.3)
+                : Color.primary.opacity(0.15)
+        } else {
+            return composerState.bashMode
+                ? Self.bashAccent.opacity(0.85)
+                : Color.primary.opacity(0.5)
         }
     }
 
@@ -633,6 +705,12 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
             context.coordinator.isProgrammaticMutation = false
         }
 
+        // Apply bash-mode theme to the NSTextView when the state flips.
+        if textView.isBashMode != composerState.bashMode {
+            textView.isBashMode = composerState.bashMode
+            textView.applyBashModeAppearance(composerState.bashMode)
+        }
+
         // Re-focus whenever a new ComposerState appears (Composer reopened).
         let currentStateID = ObjectIdentifier(composerState)
         if context.coordinator.lastFocusedStateID != currentStateID,
@@ -757,8 +835,42 @@ private final class ComposerNSTextView: NSTextView {
     /// changes. Without this tripwire, the composer never grabs first
     /// responder and the user's typing/paste falls through to the terminal.
     var pendingAutoFocusOnWindowAttach: Bool = false
+    /// Mirrors `ComposerState.bashMode` so updateNSView can detect the
+    /// transition and apply/revert the dark terminal theme.
+    var isBashMode: Bool = false
     private var imagePopover: NSPopover?
     private var hoverTrackingArea: NSTrackingArea?
+
+    /// Switch the NSTextView's native theme to/from the bash-mode look.
+    /// Called from updateNSView on every bashMode transition.
+    func applyBashModeAppearance(_ on: Bool) {
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.2
+            ctx.allowsImplicitAnimation = true
+            if on {
+                self.appearance = NSAppearance(named: .darkAqua)
+                self.drawsBackground = true
+                // #0D1117 — matches the SwiftUI gradient's top color so the
+                // NSTextView visually sits inside the card rather than
+                // floating above it.
+                self.backgroundColor = NSColor(
+                    srgbRed: 0x0D / 255.0, green: 0x11 / 255.0, blue: 0x17 / 255.0, alpha: 1
+                )
+                self.textColor = NSColor(white: 0.92, alpha: 1)
+                self.insertionPointColor = NSColor(
+                    srgbRed: 0x2E / 255.0, green: 0xE5 / 255.0, blue: 0x9D / 255.0, alpha: 1
+                )
+            } else {
+                self.appearance = nil
+                self.drawsBackground = false
+                self.backgroundColor = .clear
+                self.textColor = .labelColor
+                // Restore default — AppKit picks the system accent color.
+                self.insertionPointColor = .textInsertionPointColor
+            }
+            self.needsDisplay = true
+        }
+    }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
