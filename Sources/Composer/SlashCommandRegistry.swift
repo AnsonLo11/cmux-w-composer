@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// A single slash command entry with name and description.
 struct SlashCommand: Equatable, Hashable {
@@ -13,6 +14,35 @@ struct SlashCommand: Equatable, Hashable {
         static func < (lhs: Source, rhs: Source) -> Bool { lhs.rawValue < rhs.rawValue }
     }
     let source: Source
+}
+
+// MARK: - CompletionItem conformance
+
+extension SlashCommand: CompletionItem {
+    var detail: String { description }
+
+    var tagStyle: CompletionTagStyle {
+        switch source {
+        case .builtin:
+            return CompletionTagStyle(
+                label: "Built-in",
+                fg: Color(red: 0x10 / 255.0, green: 0xB9 / 255.0, blue: 0x81 / 255.0),
+                bg: Color(red: 0x10 / 255.0, green: 0xB9 / 255.0, blue: 0x81 / 255.0).opacity(0.10)
+            )
+        case .plugin:
+            return CompletionTagStyle(
+                label: "Skill",
+                fg: Color(red: 0x3B / 255.0, green: 0x82 / 255.0, blue: 0xF6 / 255.0),
+                bg: Color(red: 0x3B / 255.0, green: 0x82 / 255.0, blue: 0xF6 / 255.0).opacity(0.12)
+            )
+        case .userCommand, .projectCommand:
+            return CompletionTagStyle(
+                label: "Custom",
+                fg: Color(red: 0xA8 / 255.0, green: 0x55 / 255.0, blue: 0xF7 / 255.0),
+                bg: Color(red: 0xA8 / 255.0, green: 0x55 / 255.0, blue: 0xF7 / 255.0).opacity(0.12)
+            )
+        }
+    }
 }
 
 /// Discovers and caches slash commands from multiple sources:

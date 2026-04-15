@@ -51,7 +51,7 @@
 			A500C001 /* ComposerState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A500C010 /* ComposerState.swift */; };
 			A500C002 /* ComposerInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A500C011 /* ComposerInputView.swift */; };
 			A500C003 /* SlashCommandRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A500C012 /* SlashCommandRegistry.swift */; };
-			A500C004 /* SlashCompletionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A500C013 /* SlashCompletionView.swift */; };
+			A500C004 /* CompletionPopupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A500C013 /* CompletionPopupView.swift */; };
 			A500C005 /* slash-commands.json in Resources */ = {isa = PBXBuildFile; fileRef = A500C014 /* slash-commands.json */; };
 			A5008371 /* BrowserSearchOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5008370 /* BrowserSearchOverlay.swift */; };
 			A5008373 /* BrowserFindJavaScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5008372 /* BrowserFindJavaScript.swift */; };
@@ -257,7 +257,7 @@
 		A500C010 /* ComposerState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Composer/ComposerState.swift; sourceTree = "<group>"; };
 		A500C011 /* ComposerInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Composer/ComposerInputView.swift; sourceTree = "<group>"; };
 		A500C012 /* SlashCommandRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Composer/SlashCommandRegistry.swift; sourceTree = "<group>"; };
-		A500C013 /* SlashCompletionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Composer/SlashCompletionView.swift; sourceTree = "<group>"; };
+		A500C013 /* CompletionPopupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Composer/CompletionPopupView.swift; sourceTree = "<group>"; };
 		A500C014 /* slash-commands.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "slash-commands.json"; sourceTree = "<group>"; };
 		A5008370 /* BrowserSearchOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Find/BrowserSearchOverlay.swift; sourceTree = "<group>"; };
 		A5008372 /* BrowserFindJavaScript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Find/BrowserFindJavaScript.swift; sourceTree = "<group>"; };
@@ -504,7 +504,7 @@
 				A500C010 /* ComposerState.swift */,
 				A500C011 /* ComposerInputView.swift */,
 				A500C012 /* SlashCommandRegistry.swift */,
-				A500C013 /* SlashCompletionView.swift */,
+				A500C013 /* CompletionPopupView.swift */,
 				A5008372 /* BrowserFindJavaScript.swift */,
 				A5001410 /* Panel.swift */,
 				A5001411 /* TerminalPanel.swift */,
@@ -844,7 +844,7 @@
 				A500C001 /* ComposerState.swift in Sources */,
 				A500C002 /* ComposerInputView.swift in Sources */,
 				A500C003 /* SlashCommandRegistry.swift in Sources */,
-				A500C004 /* SlashCompletionView.swift in Sources */,
+				A500C004 /* CompletionPopupView.swift in Sources */,
 				A5008373 /* BrowserFindJavaScript.swift in Sources */,
 				A5001400 /* Panel.swift in Sources */,
 				A5001401 /* TerminalPanel.swift in Sources */,

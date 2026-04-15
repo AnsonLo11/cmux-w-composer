@@ -29,8 +29,8 @@ struct ComposerInputView: View {
             if composerState.showCompletion {
                 let filtered = SlashCommandRegistry.shared.matching(composerState.completionFilter)
                 if !filtered.isEmpty {
-                    SlashCompletionView(
-                        commands: filtered,
+                    CompletionPopupView(
+                        items: filtered,
                         selectedIndex: $composerState.completionSelectedIndex,
                         onSelect: { command in
                             insertCompletedCommand(command)
@@ -832,10 +832,4 @@ private final class ComposerScrollView: NSScrollView {
     }
 }
 
-// MARK: - Safe array subscript
-
-private extension Array {
-    subscript(safe index: Int) -> Element? {
-        indices.contains(index) ? self[index] : nil
-    }
-}
+// Safe array subscript is defined in CompletionPopupView.swift.
