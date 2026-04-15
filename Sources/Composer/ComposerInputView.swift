@@ -24,7 +24,9 @@ struct ComposerInputView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        // .leading alignment so the completion popup (narrower than the
+        // composer card) hugs the card's left edge instead of centering.
+        VStack(alignment: .leading, spacing: 0) {
             // Slash completion popup (above the composer card)
             if composerState.showCompletion {
                 let filtered = SlashCommandRegistry.shared.matching(composerState.completionFilter)
