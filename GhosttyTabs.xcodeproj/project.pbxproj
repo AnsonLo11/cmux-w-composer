@@ -143,6 +143,7 @@
 					F1C0010200000000A1B2C3D4 /* ComposerFocusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1C0010100000000A1B2C3D4 /* ComposerFocusTests.swift */; };
 					F1C0010400000000A1B2C3D4 /* ComposerDismissTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1C0010300000000A1B2C3D4 /* ComposerDismissTests.swift */; };
 					F1C0010600000000A1B2C3D4 /* FileCompletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1C0010500000000A1B2C3D4 /* FileCompletionTests.swift */; };
+					F1C0010800000000A1B2C3D4 /* BashModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1C0010700000000A1B2C3D4 /* BashModeTests.swift */; };
 		/* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -350,6 +351,7 @@
 				F1C0010100000000A1B2C3D4 /* ComposerFocusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerFocusTests.swift; sourceTree = "<group>"; };
 				F1C0010300000000A1B2C3D4 /* ComposerDismissTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerDismissTests.swift; sourceTree = "<group>"; };
 				F1C0010500000000A1B2C3D4 /* FileCompletionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileCompletionTests.swift; sourceTree = "<group>"; };
+				F1C0010700000000A1B2C3D4 /* BashModeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BashModeTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -648,6 +650,7 @@
 					F1C0010100000000A1B2C3D4 /* ComposerFocusTests.swift */,
 					F1C0010300000000A1B2C3D4 /* ComposerDismissTests.swift */,
 					F1C0010500000000A1B2C3D4 /* FileCompletionTests.swift */,
+					F1C0010700000000A1B2C3D4 /* BashModeTests.swift */,
 				);
 				path = Composer;
 				sourceTree = "<group>";
@@ -956,6 +959,7 @@
 					F1C0010200000000A1B2C3D4 /* ComposerFocusTests.swift in Sources */,
 					F1C0010400000000A1B2C3D4 /* ComposerDismissTests.swift in Sources */,
 					F1C0010600000000A1B2C3D4 /* FileCompletionTests.swift in Sources */,
+					F1C0010800000000A1B2C3D4 /* BashModeTests.swift in Sources */,
 				);
 				runOnlyForDeploymentPostprocessing = 0;
 			};

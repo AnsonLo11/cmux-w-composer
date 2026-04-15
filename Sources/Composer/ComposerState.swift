@@ -36,6 +36,28 @@ final class ComposerState: ObservableObject {
     /// Saved current text when user enters history mode.
     var savedCurrentText: String = ""
 
+    // MARK: - Bash mode
+
+    /// Whether the composer is rendering its bash-mode theme. When true,
+    /// sends are prefixed with an English `!` and history navigation reads
+    /// from `bashHistory` rather than `sendHistory`.
+    @Published var bashMode: Bool = false
+
+    /// True iff the given text is a single character that should toggle
+    /// the composer into bash mode. Accepts both English `!` (U+0021) and
+    /// full-width Chinese `！` (U+FF01) so IME users can trigger it without
+    /// switching layouts.
+    static func shouldEnterBashMode(text: String) -> Bool {
+        return text == "!" || text == "\u{FF01}"
+    }
+
+    /// Resolves the outgoing PTY payload: the sendable text, with an
+    /// English `!` prefix when bashMode is active. Always ASCII.
+    func payloadForSending() -> String {
+        let resolved = resolvedTextForSending()
+        return bashMode ? "!" + resolved : resolved
+    }
+
     init(text: String = "") {
         self.text = text
     }
@@ -44,24 +66,43 @@ final class ComposerState: ObservableObject {
 
     /// Shared history of sent prompts (most recent last).
     private static var sendHistory: [String] = []
+    /// Separate history for bash-mode sends so up/down navigation doesn't
+    /// mix chat prompts with shell commands.
+    private static var bashHistory: [String] = []
     private static let maxHistoryCount = 50
 
     /// Record a sent prompt in history.
     static func recordSentText(_ text: String) {
+        appendToHistory(&sendHistory, text: text)
+    }
+
+    /// Record a bash-mode command in the independent bash history.
+    static func recordBashText(_ text: String) {
+        appendToHistory(&bashHistory, text: text)
+    }
+
+    /// Test hook — clears both histories. `@MainActor` isn't required but
+    /// callers typically run on main.
+    static func resetAllHistoriesForTesting() {
+        sendHistory = []
+        bashHistory = []
+    }
+
+    private static func appendToHistory(_ history: inout [String], text: String) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        // Avoid consecutive duplicates
-        if sendHistory.last != trimmed {
-            sendHistory.append(trimmed)
-            if sendHistory.count > maxHistoryCount {
-                sendHistory.removeFirst()
+        if history.last != trimmed {
+            history.append(trimmed)
+            if history.count > maxHistoryCount {
+                history.removeFirst()
             }
         }
     }
 
     /// Navigate history. Returns the text to show, or nil if at boundary.
+    /// Reads from the bash history when `bashMode` is on.
     func historyUp() -> String? {
-        let history = Self.sendHistory
+        let history = bashMode ? Self.bashHistory : Self.sendHistory
         guard !history.isEmpty else { return nil }
         if historyIndex == -1 {
             // Entering history mode: save current text
@@ -76,7 +117,7 @@ final class ComposerState: ObservableObject {
     }
 
     func historyDown() -> String? {
-        let history = Self.sendHistory
+        let history = bashMode ? Self.bashHistory : Self.sendHistory
         guard historyIndex >= 0 else { return nil }
         if historyIndex < history.count - 1 {
             historyIndex += 1

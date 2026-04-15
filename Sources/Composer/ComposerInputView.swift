@@ -251,10 +251,34 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard !isProgrammaticMutation else { return }
             guard let textView = notification.object as? NSTextView else { return }
-            parent.composerState.text = textView.string
+            let state = parent.composerState
+            let newText = textView.string
+
+            // Bash-mode enter: a lone '!' or '！' in a non-bash composer flips
+            // us into bash visual theme and clears the text. The triggering
+            // character becomes the prompt indicator, not part of the command.
+            if !state.bashMode,
+               !textView.hasMarkedText(),
+               ComposerState.shouldEnterBashMode(text: newText) {
+                state.bashMode = true
+                isProgrammaticMutation = true
+                textView.string = ""
+                state.text = ""
+                isProgrammaticMutation = false
+                state.showCompletion = false
+                state.showFileCompletion = false
+                return
+            }
+
+            // Bash-mode exit: backspacing to empty drops us back to normal.
+            if state.bashMode, newText.isEmpty {
+                state.bashMode = false
+            }
+
+            state.text = newText
             // Reset history navigation when user types (not when browsing history)
-            parent.composerState.resetHistoryNavigation()
-            updateSlashCompletion(text: textView.string)
+            state.resetHistoryNavigation()
+            updateSlashCompletion(text: newText)
             updateFileCompletion(textView: textView)
             applySlashCommandHighlighting(textView: textView)
         }

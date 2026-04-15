@@ -138,11 +138,17 @@ final class TerminalPanel: Panel, ObservableObject {
 
     func sendComposerText(submit: Bool = false) {
         guard let state = composerState else { return }
-        let content = state.resolvedTextForSending()
-        guard !content.isEmpty else { return }
-        // Record in history before sending
-        ComposerState.recordSentText(state.text)
-        surface.sendInput(content)
+        // payloadForSending prepends an English `!` when bashMode is on.
+        let payload = state.payloadForSending()
+        guard !payload.isEmpty else { return }
+        // Record in the appropriate history (kept separate so ↑↓ nav doesn't
+        // mix shell commands with chat prompts).
+        if state.bashMode {
+            ComposerState.recordBashText(state.text)
+        } else {
+            ComposerState.recordSentText(state.text)
+        }
+        surface.sendInput(payload)
         if submit {
             // Send Enter key so CC processes the prompt immediately
             surface.sendInput("\n")
