@@ -53,6 +53,13 @@ struct CompletionPopupView<Item: CompletionItem>: View {
                             .onTapGesture {
                                 onSelect(item)
                             }
+                            // INVARIANT: Do NOT attach .onHover here to mutate
+                            // `selectedIndex`. Combined with scrollTo-on-change it
+                            // creates a feedback loop (hover -> select -> center
+                            // scroll -> new row is under the pointer -> repeat)
+                            // that makes the popup scroll like a jackrabbit
+                            // whenever the pointer is off-center. Selection is
+                            // driven exclusively by keyboard ↑↓ and taps.
                     }
                 }
                 .padding(.vertical, 4)
