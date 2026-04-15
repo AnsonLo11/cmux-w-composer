@@ -841,6 +841,15 @@ private final class ComposerNSTextView: NSTextView {
     private var imagePopover: NSPopover?
     private var hoverTrackingArea: NSTrackingArea?
 
+    // Bash-mode breathing block cursor state.
+    private var bashCursorTimer: Timer?
+    private var bashBreathPhase: Double = 0
+
+    deinit {
+        // Timer captures weak self but be explicit about teardown.
+        bashCursorTimer?.invalidate()
+    }
+
     /// Switch the NSTextView's native theme to/from the bash-mode look.
     /// Called from updateNSView on every bashMode transition.
     func applyBashModeAppearance(_ on: Bool) {
@@ -870,6 +879,63 @@ private final class ComposerNSTextView: NSTextView {
             }
             self.needsDisplay = true
         }
+        // Start/stop the breathing-cursor driver.
+        if on {
+            startBashCursorTimer()
+        } else {
+            stopBashCursorTimer()
+        }
+    }
+
+    // MARK: - Bash-mode block cursor with breathing animation
+
+    /// Override the insertion point to render as a block in bash mode, with
+    /// an opacity driven by our sin-wave breath phase. IME marked text
+    /// defers to the system drawing so composition cursor behaves correctly.
+    override func drawInsertionPoint(in rect: NSRect, color: NSColor, turnedOn flag: Bool) {
+        guard isBashMode, !hasMarkedText() else {
+            super.drawInsertionPoint(in: rect, color: color, turnedOn: flag)
+            return
+        }
+        let charWidth: CGFloat = {
+            guard let font = self.font else { return 8 }
+            let advance = font.maximumAdvancement.width
+            return advance > 0 ? advance : font.pointSize * 0.55
+        }()
+        let block = NSRect(
+            x: rect.origin.x,
+            y: rect.origin.y + 1,
+            width: max(charWidth, 2),
+            height: max(rect.height - 2, 2)
+        )
+        // 0.35 → 1.0 → 0.35 breathing curve; `turnedOn` from the system
+        // blink timer is intentionally ignored — we drive the full effect
+        // from our own timer.
+        let breath = 0.35 + 0.65 * (sin(bashBreathPhase) * 0.5 + 0.5)
+        color.withAlphaComponent(CGFloat(breath)).setFill()
+        NSBezierPath(roundedRect: block, xRadius: 1, yRadius: 1).fill()
+    }
+
+    private func startBashCursorTimer() {
+        stopBashCursorTimer()
+        // ~30 fps is smooth enough for a slow breath without taxing the GPU.
+        let timer = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            // Tuned so a full cycle takes ~1.6s.
+            self.bashBreathPhase += 0.13
+            // Invalidating the whole bounds is fine: this is a small text
+            // view and the compositor only redraws dirty tiles.
+            self.needsDisplay = true
+        }
+        // Schedule on .common so it continues during tracking loops
+        // (scrolling, menu interaction, etc.).
+        RunLoop.main.add(timer, forMode: .common)
+        bashCursorTimer = timer
+    }
+
+    private func stopBashCursorTimer() {
+        bashCursorTimer?.invalidate()
+        bashCursorTimer = nil
     }
 
     override func viewDidMoveToWindow() {
