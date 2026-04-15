@@ -377,6 +377,15 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
                 parent.onDismiss()
                 return true
             }
+            // Bash-mode Tab: when no popup is visible, open file completion
+            // using the word-before-cursor as filter.
+            if parent.composerState.bashMode,
+               !parent.composerState.showFileCompletion,
+               !parent.composerState.showCompletion,
+               commandSelector == #selector(NSResponder.insertTab(_:)) {
+                triggerBashTabCompletion(textView: textView)
+                return true
+            }
             // File completion keyboard nav (mirrors slash completion)
             if parent.composerState.showFileCompletion {
                 let items = parent.composerState.fileCompletionItems
@@ -526,6 +535,25 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
         }
 
         // MARK: - File completion logic
+
+        /// Bash-mode Tab: list cwd entries matching the word at the cursor.
+        /// Mirrors the `@`-triggered popup but uses the last whitespace-
+        /// separated word as the filter, so `cat READ<Tab>` finds README.md.
+        func triggerBashTabCompletion(textView: NSTextView) {
+            let state = parent.composerState
+            guard let match = FileTokenDetector.detectWordBeforeCursor(
+                in: textView.string,
+                cursorOffset: textView.selectedRange().location
+            ) else { return }
+            guard let cwd = parent.cwdProvider?(), !cwd.isEmpty else { return }
+            let entries = FileCompletionProvider.list(cwd: cwd, filter: match.word)
+            guard !entries.isEmpty else { return }
+            state.fileCompletionTokenRange = match.range
+            state.fileCompletionFilter = match.word
+            state.fileCompletionItems = entries
+            state.fileCompletionSelectedIndex = 0
+            state.showFileCompletion = true
+        }
 
         /// Detect `@filter` at the cursor and refresh the file popup items.
         /// Slash completion takes priority — if a slash popup is showing, the

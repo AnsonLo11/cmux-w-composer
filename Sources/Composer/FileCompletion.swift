@@ -51,6 +51,36 @@ enum FileTokenDetector {
         let filter: String
     }
 
+    /// The word at the cursor, bounded by whitespace / newline / start-of-text.
+    /// Used by bash-mode Tab completion where the "trigger" is a Tab press
+    /// rather than a sigil, and the token is just the last word the user typed.
+    struct WordMatch: Equatable {
+        let range: NSRange
+        let word: String
+    }
+
+    static func detectWordBeforeCursor(in text: String, cursorOffset: Int) -> WordMatch? {
+        let ns = text as NSString
+        guard cursorOffset >= 0, cursorOffset <= ns.length else { return nil }
+        if cursorOffset == 0 {
+            return WordMatch(range: NSRange(location: 0, length: 0), word: "")
+        }
+        var pos = cursorOffset - 1
+        while pos >= 0 {
+            let unit = ns.character(at: pos)
+            if let scalar = UnicodeScalar(unit),
+               CharacterSet.whitespacesAndNewlines.contains(scalar) {
+                let start = pos + 1
+                let range = NSRange(location: start, length: cursorOffset - start)
+                return WordMatch(range: range, word: ns.substring(with: range))
+            }
+            pos -= 1
+        }
+        // No whitespace encountered — the whole prefix is one word.
+        let range = NSRange(location: 0, length: cursorOffset)
+        return WordMatch(range: range, word: ns.substring(with: range))
+    }
+
     /// - Parameter cursorOffset: UTF-16 offset of the cursor within `text`
     ///   (i.e. `NSRange`-style, which is what `NSTextView.selectedRange` reports).
     static func detectAtToken(in text: String, cursorOffset: Int) -> Match? {

@@ -71,6 +71,39 @@ final class FileCompletionTests: XCTestCase {
         XCTAssertNil(FileTokenDetector.detectAtToken(in: "", cursorOffset: 0))
     }
 
+    // MARK: - Bash word-before-cursor detection (used by Tab completion)
+
+    func testBashWordAtStartIsEmpty() {
+        let match = FileTokenDetector.detectWordBeforeCursor(in: "", cursorOffset: 0)
+        XCTAssertEqual(match?.range, NSRange(location: 0, length: 0))
+        XCTAssertEqual(match?.word, "")
+    }
+
+    func testBashWordAfterSpaceIsEmpty() {
+        // Cursor right after a space — word is empty, range is at cursor.
+        let match = FileTokenDetector.detectWordBeforeCursor(in: "cat ", cursorOffset: 4)
+        XCTAssertEqual(match?.word, "")
+        XCTAssertEqual(match?.range, NSRange(location: 4, length: 0))
+    }
+
+    func testBashWordGrabsTokenBeforeCursor() {
+        let match = FileTokenDetector.detectWordBeforeCursor(in: "cat READ", cursorOffset: 8)
+        XCTAssertEqual(match?.word, "READ")
+        XCTAssertEqual(match?.range, NSRange(location: 4, length: 4))
+    }
+
+    func testBashWordAtLineStart() {
+        let match = FileTokenDetector.detectWordBeforeCursor(in: "ls", cursorOffset: 2)
+        XCTAssertEqual(match?.word, "ls")
+        XCTAssertEqual(match?.range, NSRange(location: 0, length: 2))
+    }
+
+    func testBashWordHandlesNewline() {
+        let match = FileTokenDetector.detectWordBeforeCursor(in: "cd\nREAD", cursorOffset: 7)
+        XCTAssertEqual(match?.word, "READ")
+        XCTAssertEqual(match?.range, NSRange(location: 3, length: 4))
+    }
+
     // MARK: - File listing
 
     func testListReturnsEntriesForTmpDir() throws {
