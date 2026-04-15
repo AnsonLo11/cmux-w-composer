@@ -52,6 +52,7 @@
 			A500C002 /* ComposerInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A500C011 /* ComposerInputView.swift */; };
 			A500C003 /* SlashCommandRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A500C012 /* SlashCommandRegistry.swift */; };
 			A500C004 /* CompletionPopupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A500C013 /* CompletionPopupView.swift */; };
+			A500C006 /* FileCompletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = A500C015 /* FileCompletion.swift */; };
 			A500C005 /* slash-commands.json in Resources */ = {isa = PBXBuildFile; fileRef = A500C014 /* slash-commands.json */; };
 			A5008371 /* BrowserSearchOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5008370 /* BrowserSearchOverlay.swift */; };
 			A5008373 /* BrowserFindJavaScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5008372 /* BrowserFindJavaScript.swift */; };
@@ -141,6 +142,7 @@
 					C1A2B3C4D5E6F70800000001 /* CmuxConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1A2B3C4D5E6F70800000002 /* CmuxConfigTests.swift */; };
 					F1C0010200000000A1B2C3D4 /* ComposerFocusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1C0010100000000A1B2C3D4 /* ComposerFocusTests.swift */; };
 					F1C0010400000000A1B2C3D4 /* ComposerDismissTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1C0010300000000A1B2C3D4 /* ComposerDismissTests.swift */; };
+					F1C0010600000000A1B2C3D4 /* FileCompletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1C0010500000000A1B2C3D4 /* FileCompletionTests.swift */; };
 		/* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -258,6 +260,7 @@
 		A500C011 /* ComposerInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Composer/ComposerInputView.swift; sourceTree = "<group>"; };
 		A500C012 /* SlashCommandRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Composer/SlashCommandRegistry.swift; sourceTree = "<group>"; };
 		A500C013 /* CompletionPopupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Composer/CompletionPopupView.swift; sourceTree = "<group>"; };
+		A500C015 /* FileCompletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Composer/FileCompletion.swift; sourceTree = "<group>"; };
 		A500C014 /* slash-commands.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "slash-commands.json"; sourceTree = "<group>"; };
 		A5008370 /* BrowserSearchOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Find/BrowserSearchOverlay.swift; sourceTree = "<group>"; };
 		A5008372 /* BrowserFindJavaScript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Find/BrowserFindJavaScript.swift; sourceTree = "<group>"; };
@@ -346,6 +349,7 @@
 				C1A2B3C4D5E6F70800000002 /* CmuxConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CmuxConfigTests.swift; sourceTree = "<group>"; };
 				F1C0010100000000A1B2C3D4 /* ComposerFocusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerFocusTests.swift; sourceTree = "<group>"; };
 				F1C0010300000000A1B2C3D4 /* ComposerDismissTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerDismissTests.swift; sourceTree = "<group>"; };
+				F1C0010500000000A1B2C3D4 /* FileCompletionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileCompletionTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -505,6 +509,7 @@
 				A500C011 /* ComposerInputView.swift */,
 				A500C012 /* SlashCommandRegistry.swift */,
 				A500C013 /* CompletionPopupView.swift */,
+				A500C015 /* FileCompletion.swift */,
 				A5008372 /* BrowserFindJavaScript.swift */,
 				A5001410 /* Panel.swift */,
 				A5001411 /* TerminalPanel.swift */,
@@ -642,6 +647,7 @@
 				children = (
 					F1C0010100000000A1B2C3D4 /* ComposerFocusTests.swift */,
 					F1C0010300000000A1B2C3D4 /* ComposerDismissTests.swift */,
+					F1C0010500000000A1B2C3D4 /* FileCompletionTests.swift */,
 				);
 				path = Composer;
 				sourceTree = "<group>";
@@ -845,6 +851,7 @@
 				A500C002 /* ComposerInputView.swift in Sources */,
 				A500C003 /* SlashCommandRegistry.swift in Sources */,
 				A500C004 /* CompletionPopupView.swift in Sources */,
+				A500C006 /* FileCompletion.swift in Sources */,
 				A5008373 /* BrowserFindJavaScript.swift in Sources */,
 				A5001400 /* Panel.swift in Sources */,
 				A5001401 /* TerminalPanel.swift in Sources */,
@@ -948,6 +955,7 @@
 					C1A2B3C4D5E6F70800000001 /* CmuxConfigTests.swift in Sources */,
 					F1C0010200000000A1B2C3D4 /* ComposerFocusTests.swift in Sources */,
 					F1C0010400000000A1B2C3D4 /* ComposerDismissTests.swift in Sources */,
+					F1C0010600000000A1B2C3D4 /* FileCompletionTests.swift in Sources */,
 				);
 				runOnlyForDeploymentPostprocessing = 0;
 			};

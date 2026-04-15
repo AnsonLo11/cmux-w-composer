@@ -71,6 +71,14 @@ struct TerminalPanelView: View {
                     },
                     onTextViewBecameFirstResponder: { [weak surface = panel.surface] in
                         surface?.setFocus(false)
+                    },
+                    cwdProvider: { [weak panel] in
+                        guard let panel else { return nil }
+                        let reported = panel.directory
+                            .trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !reported.isEmpty { return reported }
+                        return panel.requestedWorkingDirectory?
+                            .trimmingCharacters(in: .whitespacesAndNewlines)
                     }
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))

@@ -10,6 +10,9 @@ struct ComposerInputView: View {
     let onSendAndSubmit: (String) -> Void
     let onDismiss: () -> Void
     let onTextViewBecameFirstResponder: () -> Void
+    /// Supplies the current working directory for `@`-file completion.
+    /// Nil when no cwd is known (fall back to listing nothing).
+    var cwdProvider: (() -> String?)? = nil
 
     private static let defaultHeight: CGFloat = 80
     private static let minAllowedHeight: CGFloat = 50
@@ -42,6 +45,18 @@ struct ComposerInputView: View {
                     .padding(.horizontal, 8)
                     .padding(.bottom, 4)
                 }
+            } else if composerState.showFileCompletion,
+                      !composerState.fileCompletionItems.isEmpty {
+                CompletionPopupView(
+                    items: composerState.fileCompletionItems,
+                    selectedIndex: $composerState.fileCompletionSelectedIndex,
+                    onSelect: { entry in
+                        insertCompletedFile(entry)
+                    }
+                )
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                .padding(.horizontal, 8)
+                .padding(.bottom, 4)
             }
             // Composer card
             VStack(spacing: 0) {
@@ -65,7 +80,11 @@ struct ComposerInputView: View {
                     onBecomeFirstResponder: onTextViewBecameFirstResponder,
                     onInsertCommand: { command in
                         insertCompletedCommand(command)
-                    }
+                    },
+                    onInsertFile: { entry in
+                        insertCompletedFile(entry)
+                    },
+                    cwdProvider: cwdProvider
                 )
                 .frame(height: effectiveHeight)
 
@@ -164,6 +183,25 @@ struct ComposerInputView: View {
         composerState.showCompletion = false
     }
 
+    private func insertCompletedFile(_ entry: FileEntry) {
+        let ns = composerState.text as NSString
+        let range = composerState.fileCompletionTokenRange
+        let escaped = GhosttyPasteboardHelper.escapeForShell(entry.relativePath)
+        let replacement = "\(escaped) "
+        // Guard the stored range is still valid (text may have shifted if the
+        // user kept typing; the popup closes on every keystroke that changes
+        // the token, so in practice this is current).
+        guard range.location >= 0,
+              range.location + range.length <= ns.length else {
+            composerState.showFileCompletion = false
+            return
+        }
+        let updated = ns.replacingCharacters(in: range, with: replacement)
+        composerState.text = updated
+        composerState.showFileCompletion = false
+        composerState.fileCompletionItems = []
+    }
+
     private func openFilePicker() {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.image, .png, .jpeg, .tiff, .gif]
@@ -196,6 +234,8 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
     let onDismiss: () -> Void
     let onBecomeFirstResponder: () -> Void
     let onInsertCommand: (SlashCommand) -> Void
+    let onInsertFile: (FileEntry) -> Void
+    let cwdProvider: (() -> String?)?
 
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: ComposerTextViewRepresentable
@@ -215,6 +255,7 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
             // Reset history navigation when user types (not when browsing history)
             parent.composerState.resetHistoryNavigation()
             updateSlashCompletion(text: textView.string)
+            updateFileCompletion(textView: textView)
             applySlashCommandHighlighting(textView: textView)
         }
 
@@ -233,8 +274,44 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
                     parent.composerState.showCompletion = false
                     return true
                 }
+                if parent.composerState.showFileCompletion {
+                    parent.composerState.showFileCompletion = false
+                    return true
+                }
                 parent.onDismiss()
                 return true
+            }
+            // File completion keyboard nav (mirrors slash completion)
+            if parent.composerState.showFileCompletion {
+                let items = parent.composerState.fileCompletionItems
+                if commandSelector == #selector(NSResponder.moveUp(_:)) {
+                    if !items.isEmpty {
+                        let idx = parent.composerState.fileCompletionSelectedIndex
+                        parent.composerState.fileCompletionSelectedIndex =
+                            (idx - 1 + items.count) % items.count
+                    }
+                    return true
+                }
+                if commandSelector == #selector(NSResponder.moveDown(_:)) {
+                    if !items.isEmpty {
+                        let idx = parent.composerState.fileCompletionSelectedIndex
+                        parent.composerState.fileCompletionSelectedIndex =
+                            (idx + 1) % items.count
+                    }
+                    return true
+                }
+                if commandSelector == #selector(NSResponder.insertTab(_:)) {
+                    if let entry = items[safe: parent.composerState.fileCompletionSelectedIndex] {
+                        parent.onInsertFile(entry)
+                    }
+                    return true
+                }
+                if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                    if let entry = items[safe: parent.composerState.fileCompletionSelectedIndex] {
+                        parent.onInsertFile(entry)
+                    }
+                    return true
+                }
             }
             // Up/Down arrow: navigate completion list when visible
             if parent.composerState.showCompletion {
@@ -350,6 +427,40 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
             // Sync text state (attachment char is U+FFFC in the string)
             parent.composerState.text = textView.string
             textView.setSelectedRange(NSRange(location: attachPos + 2, length: 0))
+        }
+
+        // MARK: - File completion logic
+
+        /// Detect `@filter` at the cursor and refresh the file popup items.
+        /// Slash completion takes priority — if a slash popup is showing, the
+        /// file popup stays hidden.
+        func updateFileCompletion(textView: NSTextView) {
+            let state = parent.composerState
+            if state.showCompletion {
+                state.showFileCompletion = false
+                state.fileCompletionItems = []
+                return
+            }
+            guard let match = FileTokenDetector.detectAtToken(
+                in: textView.string,
+                cursorOffset: textView.selectedRange().location
+            ) else {
+                state.showFileCompletion = false
+                state.fileCompletionItems = []
+                return
+            }
+            // Resolve cwd; if none, show empty popup (effectively closed).
+            guard let cwd = parent.cwdProvider?(), !cwd.isEmpty else {
+                state.showFileCompletion = false
+                state.fileCompletionItems = []
+                return
+            }
+            let entries = FileCompletionProvider.list(cwd: cwd, filter: match.filter)
+            state.fileCompletionTokenRange = match.range
+            state.fileCompletionFilter = match.filter
+            state.fileCompletionItems = entries
+            state.fileCompletionSelectedIndex = 0
+            state.showFileCompletion = !entries.isEmpty
         }
 
         // MARK: - Slash completion logic

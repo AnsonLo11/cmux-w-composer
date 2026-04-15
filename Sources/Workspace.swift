@@ -7572,6 +7572,10 @@ final class Workspace: Identifiable, ObservableObject {
         if panelDirectories[panelId] != trimmed {
             panelDirectories[panelId] = trimmed
         }
+        // Mirror onto the panel so observers (e.g. Composer's file-completion
+        // cwd provider) can read it via `panel.directory` without having to
+        // reach into the Workspace.
+        terminalPanel(for: panelId)?.updateDirectory(trimmed)
         // Update current directory if this is the focused panel
         if panelId == focusedPanelId, currentDirectory != trimmed {
             currentDirectory = trimmed

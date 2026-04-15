@@ -13,6 +13,19 @@ final class ComposerState: ObservableObject {
     /// Currently selected index in the completion list.
     @Published var completionSelectedIndex: Int = 0
 
+    // MARK: - File completion (@-triggered)
+
+    /// Whether the `@`-file completion popup is visible.
+    @Published var showFileCompletion: Bool = false
+    /// Filter characters after the `@` and before the cursor.
+    @Published var fileCompletionFilter: String = ""
+    /// Resolved file entries for the current cwd + filter.
+    @Published var fileCompletionItems: [FileEntry] = []
+    /// Selected row in the file completion popup.
+    @Published var fileCompletionSelectedIndex: Int = 0
+    /// Range of `@filter` within the text, used to replace on acceptance.
+    var fileCompletionTokenRange: NSRange = .init(location: 0, length: 0)
+
     /// Attached images: marker index → file URL.
     @Published var attachedImages: [Int: URL] = [:]
     /// Next image index (increments per composer session).
