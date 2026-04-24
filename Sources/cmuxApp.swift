@@ -674,6 +674,10 @@ struct cmuxApp: App {
                     }
                 }
 
+                splitCommandButton(title: String(localized: "menu.view.toggleAgentSidebar", defaultValue: "Toggle Agent Sidebar"), shortcut: menuShortcut(for: .toggleAgentSidebar)) {
+                    AppDelegate.shared?.toggleAgentSidebarInActiveMainWindow()
+                }
+
                 Divider()
 
                 splitCommandButton(title: String(localized: "menu.view.nextSurface", defaultValue: "Next Surface"), shortcut: menuShortcut(for: .nextSurface)) {

@@ -6478,6 +6478,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         return false
     }
 
+    @discardableResult
+    func toggleAgentSidebarInActiveMainWindow() -> Bool {
+        if let activeManager = tabManager,
+           let workspace = activeManager.selectedWorkspace {
+            workspace.agentSessionTracker.toggleSidebar()
+            return true
+        }
+        if let keyContext = contextForMainWindow(NSApp.keyWindow),
+           let workspace = keyContext.tabManager.selectedWorkspace {
+            workspace.agentSessionTracker.toggleSidebar()
+            return true
+        }
+        return false
+    }
+
     func sidebarVisibility(windowId: UUID) -> Bool? {
         mainWindowContexts.values.first(where: { $0.windowId == windowId })?.sidebarState.isVisible
     }

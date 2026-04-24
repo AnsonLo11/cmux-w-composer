@@ -238,6 +238,7 @@ struct WorkspaceContentView: View {
     private var workspacePresentationMode = WorkspacePresentationModeSettings.defaultMode.rawValue
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject var notificationStore: TerminalNotificationStore
+    @State private var agentSidebarWidth: CGFloat = 320
 
     private var isMinimalMode: Bool {
         WorkspacePresentationModeSettings.mode(for: workspacePresentationMode) == .minimal
@@ -377,13 +378,32 @@ struct WorkspaceContentView: View {
             )
         }
 
-        Group {
-            if isMinimalMode && !isFullScreen {
-                bonsplitView
-                    .ignoresSafeArea(.container, edges: .top)
-            } else {
-                bonsplitView
+        HStack(spacing: 0) {
+            Group {
+                if isMinimalMode && !isFullScreen {
+                    bonsplitView
+                        .ignoresSafeArea(.container, edges: .top)
+                } else {
+                    bonsplitView
+                }
             }
+
+            if workspace.agentSessionTracker.sidebarVisible {
+                AgentSidebarResizeHandle(width: $agentSidebarWidth)
+                AgentActivitySidebar(tracker: workspace.agentSessionTracker)
+                    .frame(width: agentSidebarWidth)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: workspace.agentSessionTracker.sidebarVisible)
+        .onAppear {
+            workspace.agentSessionTracker.updateFocusedSurface(
+                workspace.focusedPanelId.map { $0.uuidString }
+            )
+        }
+        .onChange(of: workspace.focusedPanelId) { newPanelId in
+            workspace.agentSessionTracker.updateFocusedSurface(
+                newPanelId.map { $0.uuidString }
+            )
         }
     }
 
@@ -833,3 +853,52 @@ enum DebugUIEventCounters {
     }
 }
 #endif
+
+// MARK: - Agent Sidebar Resize Handle
+
+/// A thin draggable handle on the left edge of the agent sidebar for resizing width.
+/// Hit area matches the left sidebar's SidebarResizeInteraction (6pt sidebar + 4pt content = 10pt total).
+private struct AgentSidebarResizeHandle: View {
+    @Binding var width: CGFloat
+    @State private var isDragging = false
+    @State private var dragStartWidth: CGFloat = 0
+    private let minWidth: CGFloat = 200
+    private let maxWidth: CGFloat = 600
+    // Match left sidebar: 6pt on sidebar side + 4pt on terminal side
+    private let sidebarSideHit: CGFloat = 6
+    private let contentSideHit: CGFloat = 4
+
+    var body: some View {
+        Color.clear
+            .frame(width: sidebarSideHit + contentSideHit)
+            .overlay {
+                // Visible divider line: 1pt, shifts to 2pt while dragging
+                Rectangle()
+                    .fill(Color.white.opacity(isDragging ? 0.2 : 0.08))
+                    .frame(width: isDragging ? 2 : 1)
+            }
+            .contentShape(Rectangle())
+            .onHover { hovering in
+                if hovering {
+                    NSCursor.resizeLeftRight.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { value in
+                        if !isDragging {
+                            isDragging = true
+                            dragStartWidth = width
+                        }
+                        // Dragging left = negative translation = wider sidebar
+                        let newWidth = dragStartWidth - value.translation.width
+                        width = min(max(newWidth, minWidth), maxWidth)
+                    }
+                    .onEnded { _ in
+                        isDragging = false
+                    }
+            )
+    }
+}

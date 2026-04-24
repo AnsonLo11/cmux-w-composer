@@ -1765,6 +1765,12 @@ class TerminalController {
         case "clear_agent_pid":
             return clearAgentPID(args)
 
+        case "set_agent_session":
+            return setAgentSession(args)
+
+        case "clear_agent_session":
+            return clearAgentSession(args)
+
         case "clear_meta":
             return clearMeta(args)
 
@@ -14748,6 +14754,48 @@ class TerminalController {
         scheduleSidebarMutation(target: target) { controller, tab in
             tab.agentPIDs.removeValue(forKey: key)
             controller.refreshTrackedAgentPorts(for: tab)
+        }
+        return "OK"
+    }
+
+    /// Register an agent session for the Agent Activity sidebar.
+    /// Usage: set_agent_session <sessionId> --surface=<id> --tab=<id> [--cwd=<path>]
+    private func setAgentSession(_ args: String) -> String {
+        let parsed = parseOptions(args)
+        guard let sessionId = parsed.positional.first else {
+            return "ERROR: Usage: set_agent_session <sessionId> --surface=<id> --tab=<id> [--cwd=<path>]"
+        }
+        guard let surfaceId = parsed.options["surface"] else {
+            return "ERROR: --surface required"
+        }
+        let cwd = parsed.options["cwd"] ?? ""
+
+        let targetResolution = parseSidebarMutationTabTarget(options: parsed.options)
+        guard let target = targetResolution.target else {
+            return targetResolution.error ?? "ERROR: No tab selected"
+        }
+        scheduleSidebarMutation(target: target) { _, tab in
+            tab.agentSessionTracker.registerSession(
+                surfaceId: surfaceId,
+                sessionId: sessionId,
+                cwd: cwd
+            )
+        }
+        return "OK"
+    }
+
+    /// Deregister an agent session. Usage: clear_agent_session --surface=<id> --tab=<id>
+    private func clearAgentSession(_ args: String) -> String {
+        let parsed = parseOptions(args)
+        guard let surfaceId = parsed.options["surface"] else {
+            return "ERROR: --surface required"
+        }
+        let targetResolution = parseSidebarMutationTabTarget(options: parsed.options)
+        guard let target = targetResolution.target else {
+            return targetResolution.error ?? "ERROR: No tab selected"
+        }
+        scheduleSidebarMutation(target: target) { _, tab in
+            tab.agentSessionTracker.endSession(surfaceId: surfaceId)
         }
         return "OK"
     }

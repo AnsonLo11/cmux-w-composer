@@ -81,6 +81,7 @@ enum KeyboardShortcutSettings {
         case showBrowserJavaScriptConsole
         case toggleReactGrab
         case toggleComposer
+        case toggleAgentSidebar
 
         var id: String { rawValue }
 
@@ -143,6 +144,7 @@ enum KeyboardShortcutSettings {
             case .showBrowserJavaScriptConsole: return String(localized: "shortcut.showBrowserJSConsole.label", defaultValue: "Show Browser JavaScript Console")
             case .toggleReactGrab: return String(localized: "shortcut.toggleReactGrab.label", defaultValue: "Toggle React Grab")
             case .toggleComposer: return String(localized: "shortcut.toggleComposer.label", defaultValue: "Toggle Composer")
+            case .toggleAgentSidebar: return String(localized: "shortcut.toggleAgentSidebar.label", defaultValue: "Toggle Agent Sidebar")
             }
         }
 
@@ -270,6 +272,8 @@ enum KeyboardShortcutSettings {
                 return StoredShortcut(key: "g", command: true, shift: true, option: false, control: false)
             case .toggleComposer:
                 return StoredShortcut(key: "i", command: true, shift: true, option: false, control: false)
+            case .toggleAgentSidebar:
+                return StoredShortcut(key: "a", command: true, shift: true, option: false, control: false)
             }
         }
 

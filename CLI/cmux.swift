@@ -12460,6 +12460,14 @@ struct CMUXCLI {
                     client: client
                 )
             }
+            // Notify app of session metadata for Agent Activity sidebar
+            if let sessionId = parsedInput.sessionId {
+                let cwdArg = parsedInput.cwd.map { " --cwd=\($0)" } ?? ""
+                _ = try? sendV1Command(
+                    "set_agent_session \(sessionId) --surface=\(surfaceId) --tab=\(workspaceId)\(cwdArg)",
+                    client: client
+                )
+            }
             print("OK")
 
         case "stop", "idle":
@@ -12616,6 +12624,8 @@ struct CMUXCLI {
             )
             if let consumedSession {
                 let workspaceId = consumedSession.workspaceId
+                let surfaceId = consumedSession.surfaceId
+                _ = try? sendV1Command("clear_agent_session --surface=\(surfaceId) --tab=\(workspaceId)", client: client)
                 _ = try? clearClaudeStatus(client: client, workspaceId: workspaceId)
                 _ = try? sendV1Command("clear_agent_pid claude_code --tab=\(workspaceId)", client: client)
                 _ = try? sendV1Command("clear_notifications --tab=\(workspaceId)", client: client)

@@ -6612,6 +6612,9 @@ final class Workspace: Identifiable, ObservableObject {
     /// PIDs associated with agent status entries (e.g. claude_code), keyed by status key.
     /// Used for stale-session detection: if the PID is dead, the status entry is cleared.
     var agentPIDs: [String: pid_t] = [:]
+
+    /// Tracks active CC sessions for the Agent Activity sidebar.
+    let agentSessionTracker = AgentSessionTracker()
     private var restoredTerminalScrollbackByPanelId: [UUID: String] = [:]
 
     private func sidebarObservationSignal<Value: Equatable>(

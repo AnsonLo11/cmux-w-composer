@@ -81,6 +81,16 @@
 		A5001650 /* CmuxConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001651 /* CmuxConfig.swift */; };
 		A5001652 /* CmuxConfigExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001653 /* CmuxConfigExecutor.swift */; };
 		A5001654 /* CmuxDirectoryTrust.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5001655 /* CmuxDirectoryTrust.swift */; };
+			A5AA000000000000BB000001 /* ToolEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5AA000000000000AA000001 /* ToolEvent.swift */; };
+			A5AA000000000000BB000002 /* ConversationLogWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5AA000000000000AA000002 /* ConversationLogWatcher.swift */; };
+			A5AA000000000000BB000003 /* AgentActivityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5AA000000000000AA000003 /* AgentActivityStore.swift */; };
+			A5AA000000000000BB000004 /* AgentSessionTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5AA000000000000AA000004 /* AgentSessionTracker.swift */; };
+			A5AA000000000000BB000005 /* AgentActivitySidebar.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5AA000000000000AA000005 /* AgentActivitySidebar.swift */; };
+			A5AA000000000000BB000006 /* ToolCardShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5AA000000000000AA000006 /* ToolCardShell.swift */; };
+			A5AA000000000000BB000007 /* BashCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5AA000000000000AA000007 /* BashCardView.swift */; };
+			A5AA000000000000BB000008 /* FileOpCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5AA000000000000AA000008 /* FileOpCardView.swift */; };
+			A5AA000000000000BB000009 /* SearchCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5AA000000000000AA000009 /* SearchCardView.swift */; };
+			A5AA00000000000000BB0010 /* AgentCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5AA00000000000000000010 /* AgentCardView.swift */; };
 		A5001100 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A5001101 /* Assets.xcassets */; };
 		A5001230 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A5001231 /* Sparkle */; };
 		B9000002A1B2C3D4E5F60719 /* cmux.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9000001A1B2C3D4E5F60719 /* cmux.swift */; };
@@ -144,6 +154,7 @@
 					F1C0010400000000A1B2C3D4 /* ComposerDismissTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1C0010300000000A1B2C3D4 /* ComposerDismissTests.swift */; };
 					F1C0010600000000A1B2C3D4 /* FileCompletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1C0010500000000A1B2C3D4 /* FileCompletionTests.swift */; };
 					F1C0010800000000A1B2C3D4 /* BashModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1C0010700000000A1B2C3D4 /* BashModeTests.swift */; };
+					F1C0012100000000A1B2C3D4 /* CodeBlockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1C0012000000000A1B2C3D4 /* CodeBlockTests.swift */; };
 		/* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -352,6 +363,17 @@
 				F1C0010300000000A1B2C3D4 /* ComposerDismissTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerDismissTests.swift; sourceTree = "<group>"; };
 				F1C0010500000000A1B2C3D4 /* FileCompletionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileCompletionTests.swift; sourceTree = "<group>"; };
 				F1C0010700000000A1B2C3D4 /* BashModeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BashModeTests.swift; sourceTree = "<group>"; };
+				F1C0012000000000A1B2C3D4 /* CodeBlockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeBlockTests.swift; sourceTree = "<group>"; };
+				A5AA000000000000AA000001 /* ToolEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolEvent.swift; sourceTree = "<group>"; };
+				A5AA000000000000AA000002 /* ConversationLogWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationLogWatcher.swift; sourceTree = "<group>"; };
+				A5AA000000000000AA000003 /* AgentActivityStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentActivityStore.swift; sourceTree = "<group>"; };
+				A5AA000000000000AA000004 /* AgentSessionTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSessionTracker.swift; sourceTree = "<group>"; };
+				A5AA000000000000AA000005 /* AgentActivitySidebar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentActivitySidebar.swift; sourceTree = "<group>"; };
+				A5AA000000000000AA000006 /* ToolCardShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolCardShell.swift; sourceTree = "<group>"; };
+				A5AA000000000000AA000007 /* BashCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BashCardView.swift; sourceTree = "<group>"; };
+				A5AA000000000000AA000008 /* FileOpCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileOpCardView.swift; sourceTree = "<group>"; };
+				A5AA000000000000AA000009 /* SearchCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchCardView.swift; sourceTree = "<group>"; };
+				A5AA00000000000000000010 /* AgentCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentCardView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -544,6 +566,7 @@
 				A5001651 /* CmuxConfig.swift */,
 				A5001653 /* CmuxConfigExecutor.swift */,
 				A5001655 /* CmuxDirectoryTrust.swift */,
+					A5AA000000000000CC000001 /* AgentActivity */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -651,8 +674,34 @@
 					F1C0010300000000A1B2C3D4 /* ComposerDismissTests.swift */,
 					F1C0010500000000A1B2C3D4 /* FileCompletionTests.swift */,
 					F1C0010700000000A1B2C3D4 /* BashModeTests.swift */,
+					F1C0012000000000A1B2C3D4 /* CodeBlockTests.swift */,
 				);
 				path = Composer;
+				sourceTree = "<group>";
+			};
+			A5AA000000000000CC000001 /* AgentActivity */ = {
+				isa = PBXGroup;
+				children = (
+					A5AA000000000000AA000001 /* ToolEvent.swift */,
+					A5AA000000000000AA000002 /* ConversationLogWatcher.swift */,
+					A5AA000000000000AA000003 /* AgentActivityStore.swift */,
+					A5AA000000000000AA000004 /* AgentSessionTracker.swift */,
+					A5AA000000000000AA000005 /* AgentActivitySidebar.swift */,
+					A5AA000000000000CC000002 /* Cards */,
+				);
+				path = AgentActivity;
+				sourceTree = "<group>";
+			};
+			A5AA000000000000CC000002 /* Cards */ = {
+				isa = PBXGroup;
+				children = (
+					A5AA000000000000AA000006 /* ToolCardShell.swift */,
+					A5AA000000000000AA000007 /* BashCardView.swift */,
+					A5AA000000000000AA000008 /* FileOpCardView.swift */,
+					A5AA000000000000AA000009 /* SearchCardView.swift */,
+					A5AA00000000000000000010 /* AgentCardView.swift */,
+				);
+				path = Cards;
 				sourceTree = "<group>";
 			};
 /* End PBXGroup section */
@@ -887,6 +936,16 @@
 				A5001650 /* CmuxConfig.swift in Sources */,
 			A5001652 /* CmuxConfigExecutor.swift in Sources */,
 			A5001654 /* CmuxDirectoryTrust.swift in Sources */,
+				A5AA000000000000BB000001 /* ToolEvent.swift in Sources */,
+				A5AA000000000000BB000002 /* ConversationLogWatcher.swift in Sources */,
+				A5AA000000000000BB000003 /* AgentActivityStore.swift in Sources */,
+				A5AA000000000000BB000004 /* AgentSessionTracker.swift in Sources */,
+				A5AA000000000000BB000005 /* AgentActivitySidebar.swift in Sources */,
+				A5AA000000000000BB000006 /* ToolCardShell.swift in Sources */,
+				A5AA000000000000BB000007 /* BashCardView.swift in Sources */,
+				A5AA000000000000BB000008 /* FileOpCardView.swift in Sources */,
+				A5AA000000000000BB000009 /* SearchCardView.swift in Sources */,
+				A5AA00000000000000BB0010 /* AgentCardView.swift in Sources */,
 		);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -960,6 +1019,7 @@
 					F1C0010400000000A1B2C3D4 /* ComposerDismissTests.swift in Sources */,
 					F1C0010600000000A1B2C3D4 /* FileCompletionTests.swift in Sources */,
 					F1C0010800000000A1B2C3D4 /* BashModeTests.swift in Sources */,
+					F1C0012100000000A1B2C3D4 /* CodeBlockTests.swift in Sources */,
 				);
 				runOnlyForDeploymentPostprocessing = 0;
 			};
