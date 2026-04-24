@@ -73,12 +73,23 @@ struct TerminalPanelView: View {
                         surface?.setFocus(false)
                     },
                     cwdProvider: { [weak panel] in
+                        // File completion is expected to match Claude Code's
+                        // project root rather than the shell's live cwd.
+                        // `requestedWorkingDirectory` is set once at surface
+                        // creation (the directory the user opened the panel
+                        // in) and never drifts as the shell cd's, so it is
+                        // the stable proxy for "the dir CC was launched in".
+                        // Only fall back to the reported shell cwd when the
+                        // panel has no explicit requested directory.
                         guard let panel else { return nil }
+                        if let requested = panel.requestedWorkingDirectory?
+                            .trimmingCharacters(in: .whitespacesAndNewlines),
+                           !requested.isEmpty {
+                            return requested
+                        }
                         let reported = panel.directory
                             .trimmingCharacters(in: .whitespacesAndNewlines)
-                        if !reported.isEmpty { return reported }
-                        return panel.requestedWorkingDirectory?
-                            .trimmingCharacters(in: .whitespacesAndNewlines)
+                        return reported.isEmpty ? nil : reported
                     }
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))

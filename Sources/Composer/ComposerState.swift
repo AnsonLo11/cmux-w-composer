@@ -36,6 +36,54 @@ final class ComposerState: ObservableObject {
     /// Saved current text when user enters history mode.
     var savedCurrentText: String = ""
 
+    // MARK: - Code blocks (```)
+
+    /// A single code-block region within `text`. `range` is over the
+    /// display text (which does NOT include the fence characters — those
+    /// are consumed when the user triggers entry/exit). `language` is the
+    /// identifier the user typed after the opening fence (empty for an
+    /// unlabeled block). Used both to paint the gray background in the
+    /// NSTextView and to wrap the content in standard markdown ``` fences
+    /// on send.
+    struct CodeBlockSpan: Equatable {
+        var range: NSRange
+        var language: String
+    }
+
+    /// All code-block spans, left-to-right, non-overlapping. Maintained
+    /// by the composer's Coordinator on every text change.
+    @Published var codeBlocks: [CodeBlockSpan] = []
+
+    /// Unicode triggers the composer treats as a code-block fence. The
+    /// first element (``) is the canonical form emitted during send;
+    /// `～～～` (U+FF5E full-width tilde, common on CN/JP keyboards) and
+    /// `···` (U+00B7 middle dot, what the pinyin IME emits for the
+    /// backtick key) are aliases that normalise to ``` when serialised
+    /// for CC.
+    static let codeBlockFenceCharacters: [Character] = ["\u{0060}", "\u{FF5E}", "\u{00B7}"]
+
+    /// Parse a line and report whether it's a fence trigger. Returns the
+    /// language tag (possibly empty) when matched, or nil when the line
+    /// is not a fence.
+    ///
+    /// A fence line is exactly three consecutive fence characters (all
+    /// the same character) optionally followed by a language identifier
+    /// made of non-whitespace characters. Mixed fence characters (e.g.
+    /// `\`\`~` ) do not match — this avoids false triggers when a user
+    /// is quoting real backticks.
+    static func parseFenceLine(_ line: String) -> String? {
+        let trimmed = line
+        guard trimmed.count >= 3 else { return nil }
+        let first = trimmed.first!
+        guard codeBlockFenceCharacters.contains(first) else { return nil }
+        let prefix = trimmed.prefix(3)
+        guard prefix.allSatisfy({ $0 == first }) else { return nil }
+        let rest = trimmed.dropFirst(3)
+        // Language tag must not contain whitespace.
+        guard rest.allSatisfy({ !$0.isWhitespace }) else { return nil }
+        return String(rest)
+    }
+
     // MARK: - Bash mode
 
     /// Whether the composer is rendering its bash-mode theme. When true,
@@ -56,6 +104,48 @@ final class ComposerState: ObservableObject {
     func payloadForSending() -> String {
         let resolved = resolvedTextForSending()
         return bashMode ? "!" + resolved : resolved
+    }
+
+    /// Wraps each code-block span in `codeBlocks` with standard markdown
+    /// ``` fences (using the canonical ASCII backtick, regardless of
+    /// which fence character the user typed to trigger the block). Prose
+    /// outside code blocks is emitted verbatim.
+    ///
+    /// Called from `resolvedTextForSending` so the rest of the send
+    /// pipeline (image attachments, bash `!` prefix) sees the already-
+    /// fenced markdown.
+    func textWithCodeFencesApplied(to base: String) -> String {
+        guard !codeBlocks.isEmpty else { return base }
+        let ns = base as NSString
+        // Sort by location, defensively, and clip to bounds.
+        let spans = codeBlocks
+            .filter { NSMaxRange($0.range) <= ns.length && $0.range.length >= 0 }
+            .sorted { $0.range.location < $1.range.location }
+        var out = ""
+        var cursor = 0
+        for span in spans {
+            if span.range.location > cursor {
+                out += ns.substring(with: NSRange(
+                    location: cursor,
+                    length: span.range.location - cursor
+                ))
+            }
+            let content = ns.substring(with: span.range)
+            // Ensure fences live on their own lines: add leading newline
+            // if we're not already at a line boundary, and trailing
+            // newline before the closing fence if content doesn't end
+            // with one.
+            let needsLeadingNL = !out.isEmpty && !out.hasSuffix("\n")
+            out += (needsLeadingNL ? "\n" : "") + "```" + span.language + "\n"
+            out += content
+            if !content.hasSuffix("\n") { out += "\n" }
+            out += "```\n"
+            cursor = NSMaxRange(span.range)
+        }
+        if cursor < ns.length {
+            out += ns.substring(from: cursor)
+        }
+        return out
     }
 
     init(text: String = "") {
@@ -146,7 +236,7 @@ final class ComposerState: ObservableObject {
     /// Resolve the display text to sendable text by replacing image references with file paths.
     /// Handles both [IMAGE #N] text markers and U+FFFC attachment characters.
     func resolvedTextForSending() -> String {
-        var result = text
+        var result = textWithCodeFencesApplied(to: text)
         // Replace [IMAGE #N] text markers (fallback path)
         for (index, url) in attachedImages {
             let marker = "[IMAGE #\(index)]"
