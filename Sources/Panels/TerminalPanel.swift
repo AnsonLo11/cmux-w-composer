@@ -127,8 +127,13 @@ final class TerminalPanel: Panel, ObservableObject {
         if composerState != nil {
             hideComposer()
         } else {
-            composerState = ComposerState(text: savedComposerDraft)
+            showComposer()
         }
+    }
+
+    func showComposer() {
+        guard composerState == nil else { return }
+        composerState = ComposerState(text: savedComposerDraft)
     }
 
     func hideComposer() {
@@ -154,7 +159,8 @@ final class TerminalPanel: Panel, ObservableObject {
             surface.sendInput("\n")
         }
         savedComposerDraft = ""
-        composerState = nil
+        // Clear text but keep the composer open (ready for next input).
+        state.clearAfterSend()
     }
 
     func updateDirectory(_ newDirectory: String) {

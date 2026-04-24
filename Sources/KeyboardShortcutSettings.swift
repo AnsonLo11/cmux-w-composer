@@ -273,7 +273,7 @@ enum KeyboardShortcutSettings {
             case .toggleComposer:
                 return StoredShortcut(key: "i", command: true, shift: true, option: false, control: false)
             case .toggleAgentSidebar:
-                return StoredShortcut(key: "a", command: true, shift: true, option: false, control: false)
+                return StoredShortcut(key: "b", command: true, shift: true, option: false, control: false)
             }
         }
 

@@ -14,17 +14,13 @@ struct ComposerInputView: View {
     /// Nil when no cwd is known (fall back to listing nothing).
     var cwdProvider: (() -> String?)? = nil
 
-    private static let defaultHeight: CGFloat = 80
+    private static let defaultHeight: CGFloat = 54
     private static let minAllowedHeight: CGFloat = 50
     private static let maxAllowedHeight: CGFloat = 400
 
     @State private var composerHeight: CGFloat = ComposerInputView.defaultHeight
-    @GestureState private var dragOffset: CGFloat = 0
-
-    private var effectiveHeight: CGFloat {
-        let h = composerHeight - dragOffset
-        return min(max(h, Self.minAllowedHeight), Self.maxAllowedHeight)
-    }
+    @State private var isDraggingComposer = false
+    @State private var dragStartHeight: CGFloat = 0
 
     var body: some View {
         // .leading alignment so the completion popup (narrower than the
@@ -91,7 +87,7 @@ struct ComposerInputView: View {
                         },
                         cwdProvider: cwdProvider
                     )
-                    .frame(height: effectiveHeight)
+                    .frame(height: composerHeight)
                 }
 
                 // Bottom toolbar: + button on left, send button on right
@@ -226,13 +222,23 @@ struct ComposerInputView: View {
         .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
         .gesture(
-            DragGesture()
-                .updating($dragOffset) { value, state, _ in
-                    state = value.translation.height
+            DragGesture(minimumDistance: 0, coordinateSpace: .global)
+                .onChanged { value in
+                    if !isDraggingComposer {
+                        TerminalWindowPortalRegistry.beginInteractiveGeometryResize()
+                        isDraggingComposer = true
+                        dragStartHeight = composerHeight
+                    }
+                    let newHeight = dragStartHeight - value.translation.height
+                    withTransaction(Transaction(animation: nil)) {
+                        composerHeight = min(max(newHeight, Self.minAllowedHeight), Self.maxAllowedHeight)
+                    }
                 }
-                .onEnded { value in
-                    let newHeight = composerHeight - value.translation.height
-                    composerHeight = min(max(newHeight, Self.minAllowedHeight), Self.maxAllowedHeight)
+                .onEnded { _ in
+                    if isDraggingComposer {
+                        TerminalWindowPortalRegistry.endInteractiveGeometryResize()
+                        isDraggingComposer = false
+                    }
                 }
         )
         .onHover { hovering in

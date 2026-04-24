@@ -87749,6 +87749,23 @@
         }
       }
     },
+    "menu.view.toggleComposer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toggle Composer"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コンポーザーの切り替え"
+          }
+        }
+      }
+    },
     "menu.view.toggleAgentSidebar": {
       "extractionState": "manual",
       "localizations": {

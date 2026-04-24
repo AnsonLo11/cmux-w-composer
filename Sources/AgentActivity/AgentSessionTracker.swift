@@ -28,11 +28,19 @@ final class AgentSessionTracker: ObservableObject {
     @Published private(set) var hasActiveSessionOnFocusedPanel: Bool = false
 
     /// Manual override for sidebar visibility (nil = auto, true = force show, false = force hide)
-    @Published var manualOverride: Bool? = nil
+    @Published var sidebarManualOverride: Bool? = nil
 
     /// Computed sidebar visibility
     var sidebarVisible: Bool {
-        manualOverride ?? hasActiveSessionOnFocusedPanel
+        sidebarManualOverride ?? hasActiveSessionOnFocusedPanel
+    }
+
+    /// Manual override for composer visibility (nil = auto, true = force show, false = force hide)
+    @Published var composerManualOverride: Bool? = nil
+
+    /// Computed composer visibility — same auto-show logic as the sidebar.
+    var composerVisible: Bool {
+        composerManualOverride ?? hasActiveSessionOnFocusedPanel
     }
 
     private var focusedSurfaceId: String?
@@ -99,19 +107,28 @@ final class AgentSessionTracker: ObservableObject {
         focusedSurfaceId = surfaceId
 
         if changed {
-            // Reset manual override when switching panels
-            manualOverride = nil
+            // Reset manual overrides when switching panels
+            sidebarManualOverride = nil
+            composerManualOverride = nil
         }
 
         updateFocusedStore()
     }
 
     func toggleSidebar() {
-        if let current = manualOverride {
-            manualOverride = !current
+        if let current = sidebarManualOverride {
+            sidebarManualOverride = !current
         } else {
             // First manual toggle: opposite of current auto state
-            manualOverride = !hasActiveSessionOnFocusedPanel
+            sidebarManualOverride = !hasActiveSessionOnFocusedPanel
+        }
+    }
+
+    func toggleComposer() {
+        if let current = composerManualOverride {
+            composerManualOverride = !current
+        } else {
+            composerManualOverride = !hasActiveSessionOnFocusedPanel
         }
     }
 

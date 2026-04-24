@@ -674,6 +674,10 @@ struct cmuxApp: App {
                     }
                 }
 
+                splitCommandButton(title: String(localized: "menu.view.toggleComposer", defaultValue: "Toggle Composer"), shortcut: menuShortcut(for: .toggleComposer)) {
+                    AppDelegate.shared?.toggleComposerInActiveMainWindow()
+                }
+
                 splitCommandButton(title: String(localized: "menu.view.toggleAgentSidebar", defaultValue: "Toggle Agent Sidebar"), shortcut: menuShortcut(for: .toggleAgentSidebar)) {
                     AppDelegate.shared?.toggleAgentSidebarInActiveMainWindow()
                 }

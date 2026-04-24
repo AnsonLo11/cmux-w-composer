@@ -1088,7 +1088,12 @@ class TabManager: ObservableObject {
             MainActor.assumeIsolated { [weak self] in
                 guard let self,
                       let surface = notification.object as? TerminalSurface else { return }
-                terminalPanel(tabId: surface.tabId, panelId: surface.id)?.hideComposer()
+                // Force-hide via the tracker so auto-show doesn't re-open
+                if let tab = self.tabs.first(where: { $0.id == surface.tabId }) {
+                    tab.agentSessionTracker.composerManualOverride = false
+                } else {
+                    terminalPanel(tabId: surface.tabId, panelId: surface.id)?.hideComposer()
+                }
             }
         })
 

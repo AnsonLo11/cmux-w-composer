@@ -405,6 +405,20 @@ struct WorkspaceContentView: View {
                 newPanelId.map { $0.uuidString }
             )
         }
+        .onChange(of: workspace.agentSessionTracker.composerVisible) { shouldShow in
+            syncComposerVisibility(shouldShow: shouldShow)
+        }
+    }
+
+    /// Drive focused panel's composer state from the tracker's composerVisible.
+    private func syncComposerVisibility(shouldShow: Bool) {
+        guard let panelId = workspace.focusedPanelId,
+              let panel = workspace.panels[panelId] as? TerminalPanel else { return }
+        if shouldShow {
+            panel.showComposer()
+        } else {
+            panel.hideComposer()
+        }
     }
 
     private func syncBonsplitNotificationBadges() {
@@ -886,18 +900,24 @@ private struct AgentSidebarResizeHandle: View {
                 }
             }
             .gesture(
-                DragGesture(minimumDistance: 1)
+                DragGesture(minimumDistance: 0, coordinateSpace: .global)
                     .onChanged { value in
                         if !isDragging {
+                            TerminalWindowPortalRegistry.beginInteractiveGeometryResize()
                             isDragging = true
                             dragStartWidth = width
                         }
                         // Dragging left = negative translation = wider sidebar
                         let newWidth = dragStartWidth - value.translation.width
-                        width = min(max(newWidth, minWidth), maxWidth)
+                        withTransaction(Transaction(animation: nil)) {
+                            width = min(max(newWidth, minWidth), maxWidth)
+                        }
                     }
                     .onEnded { _ in
-                        isDragging = false
+                        if isDragging {
+                            TerminalWindowPortalRegistry.endInteractiveGeometryResize()
+                            isDragging = false
+                        }
                     }
             )
     }

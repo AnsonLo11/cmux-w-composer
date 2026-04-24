@@ -6479,6 +6479,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
     }
 
     @discardableResult
+    func toggleComposerInActiveMainWindow() -> Bool {
+        if let activeManager = tabManager,
+           let workspace = activeManager.selectedWorkspace {
+            workspace.agentSessionTracker.toggleComposer()
+            return true
+        }
+        if let keyContext = contextForMainWindow(NSApp.keyWindow),
+           let workspace = keyContext.tabManager.selectedWorkspace {
+            workspace.agentSessionTracker.toggleComposer()
+            return true
+        }
+        return false
+    }
+
+    @discardableResult
     func toggleAgentSidebarInActiveMainWindow() -> Bool {
         if let activeManager = tabManager,
            let workspace = activeManager.selectedWorkspace {
@@ -11475,7 +11490,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         }
 
         if matchConfiguredShortcut(event: event, action: .toggleComposer) {
-            tabManager?.toggleComposer()
+            if let workspace = tabManager?.selectedWorkspace {
+                workspace.agentSessionTracker.toggleComposer()
+            }
             return true
         }
 

@@ -84,6 +84,20 @@ final class ComposerState: ObservableObject {
         return String(rest)
     }
 
+    /// Reset state after a successful send — clears text, images, and code
+    /// blocks but keeps the composer instance alive (ready for next input).
+    func clearAfterSend() {
+        text = ""
+        attachedImages.removeAll()
+        nextImageIndex = 1
+        codeBlocks.removeAll()
+        showCompletion = false
+        showFileCompletion = false
+        bashMode = false
+        historyIndex = -1
+        savedCurrentText = ""
+    }
+
     // MARK: - Bash mode
 
     /// Whether the composer is rendering its bash-mode theme. When true,
