@@ -430,7 +430,14 @@ if [[ -n "$TAG" && "$APP_NAME" != "$SEARCH_APP_NAME" ]]; then
         rm -f "$CMUX_SOCKET"
       fi
     fi
-    /usr/bin/codesign --force --sign - --timestamp=none --generate-entitlement-der "$TAG_APP_PATH" >/dev/null 2>&1 || true
+    # Prefer a local dev certificate so the icon renders without macOS's
+    # "unidentified app" container frame. Fall back to ad-hoc if unavailable.
+    xattr -cr "$TAG_APP_PATH" 2>/dev/null || true
+    CODESIGN_ID="-"
+    if security find-identity -v -p codesigning 2>/dev/null | grep -q "cmux Dev Codesign"; then
+      CODESIGN_ID="cmux Dev Codesign"
+    fi
+    /usr/bin/codesign --force --deep --sign "$CODESIGN_ID" --timestamp=none --generate-entitlement-der "$TAG_APP_PATH" >/dev/null 2>&1 || true
   fi
   APP_PATH="$TAG_APP_PATH"
 fi
@@ -479,6 +486,10 @@ CLI_PATH="$APP_PATH/Contents/Resources/bin/cmux"
 if [[ -x "$CLI_PATH" ]]; then
   echo "$CLI_PATH" > /tmp/cmux-last-cli-path || true
 fi
+
+# Register with LaunchServices so the icon displays correctly in Finder/Dock
+# before first launch (avoids the "shrunk icon in generic container" look).
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP_PATH" 2>/dev/null || true
 
 if [[ "$LAUNCH" -eq 1 ]]; then
   # Ensure any running instance is fully terminated, regardless of DerivedData path.
