@@ -102,14 +102,19 @@ final class AgentSessionTracker: ObservableObject {
 
     // MARK: - Focus Tracking
 
-    func updateFocusedSurface(_ surfaceId: String?) {
+    func updateFocusedSurface(_ surfaceId: String?, cwd: String? = nil) {
         let changed = focusedSurfaceId != surfaceId
         focusedSurfaceId = surfaceId
 
         if changed {
-            // Reset manual overrides when switching panels
             sidebarManualOverride = nil
             composerManualOverride = nil
+        }
+
+        // If the focused panel has no registered session, try to discover
+        // an existing CC session by scanning JSONL files for this CWD.
+        if let surfaceId, sessions[surfaceId] == nil, let cwd, !cwd.isEmpty {
+            discoverExistingSession(surfaceId: surfaceId, cwd: cwd)
         }
 
         updateFocusedStore()
@@ -130,6 +135,62 @@ final class AgentSessionTracker: ObservableObject {
         } else {
             composerManualOverride = !hasActiveSessionOnFocusedPanel
         }
+    }
+
+    // MARK: - Session Discovery (fallback for old sessions without hooks)
+
+    /// Surfaces that we already attempted discovery for, to avoid repeated scans.
+    private var discoveryAttempted: Set<String> = []
+
+    /// Try to find an active CC session by scanning JSONL files for this CWD.
+    /// Called when a panel is focused but has no registered session.
+    private func discoverExistingSession(surfaceId: String, cwd: String) {
+        guard !discoveryAttempted.contains(surfaceId) else { return }
+        discoveryAttempted.insert(surfaceId)
+
+        let projectDirHash = cwd.replacingOccurrences(of: "/", with: "-")
+        let claudeDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude/projects")
+            .appendingPathComponent(projectDirHash)
+
+        // Scan on a background queue to avoid blocking main
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self else { return }
+            guard let jsonlFile = Self.findMostRecentActiveJSONL(in: claudeDir) else { return }
+
+            let sessionId = jsonlFile.deletingPathExtension().lastPathComponent
+
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                // Double-check: another registration may have arrived via hook
+                guard self.sessions[surfaceId] == nil else { return }
+                self.registerSession(surfaceId: surfaceId, sessionId: sessionId, cwd: cwd)
+            }
+        }
+    }
+
+    /// Find the most recently modified `.jsonl` file in the directory that is
+    /// still being actively written (modified within the last 60 seconds).
+    private static func findMostRecentActiveJSONL(in dir: URL) -> URL? {
+        let fm = FileManager.default
+        guard let contents = try? fm.contentsOfDirectory(
+            at: dir, includingPropertiesForKeys: [.contentModificationDateKey],
+            options: .skipsHiddenFiles
+        ) else { return nil }
+
+        let now = Date()
+        let cutoff: TimeInterval = 60 // consider "active" if modified within 60s
+
+        return contents
+            .filter { $0.pathExtension == "jsonl" }
+            .compactMap { url -> (URL, Date)? in
+                guard let values = try? url.resourceValues(forKeys: [.contentModificationDateKey]),
+                      let modDate = values.contentModificationDate,
+                      now.timeIntervalSince(modDate) < cutoff else { return nil }
+                return (url, modDate)
+            }
+            .max(by: { $0.1 < $1.1 })
+            .map(\.0)
     }
 
     // MARK: - Private

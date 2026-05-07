@@ -14,13 +14,20 @@ struct ComposerInputView: View {
     /// Nil when no cwd is known (fall back to listing nothing).
     var cwdProvider: (() -> String?)? = nil
 
-    private static let defaultHeight: CGFloat = 54
-    private static let minAllowedHeight: CGFloat = 50
-    private static let maxAllowedHeight: CGFloat = 400
+    /// Single-line initial height: 14pt font + 8pt top/bottom insets + small padding.
+    private static let singleLineHeight: CGFloat = 34
+    private static let minAllowedHeight: CGFloat = 34
+    /// Absolute cap — the window-relative 40% cap is computed at runtime.
+    private static let absoluteMaxHeight: CGFloat = 600
 
-    @State private var composerHeight: CGFloat = ComposerInputView.defaultHeight
+    /// The font size used by the NSTextView and all derived metrics.
+    static let composerFontSize: CGFloat = 14
+
+    @State private var composerHeight: CGFloat = ComposerInputView.singleLineHeight
     @State private var isDraggingComposer = false
     @State private var dragStartHeight: CGFloat = 0
+    /// Height reported by the NSTextView's content (drives auto-expand).
+    @State private var intrinsicContentHeight: CGFloat = ComposerInputView.singleLineHeight
 
     var body: some View {
         // .leading alignment so the completion popup (narrower than the
@@ -54,103 +61,149 @@ struct ComposerInputView: View {
                 .padding(.horizontal, 8)
                 .padding(.bottom, 4)
             }
-            // Composer card
-            VStack(spacing: 0) {
-                // Drag handle for resizing
-                composerDragHandle
-
-                // Text input area. The bash-mode ❯ prompt is drawn *inside*
-                // ComposerNSTextView (see drawBashPrompt) so it shares the
-                // NSTextView's font, baseline, and left inset — avoiding the
-                // two-coordinate-system alignment drift we used to get from a
-                // SwiftUI Text sitting next to the NSTextView.
-                HStack(alignment: .top, spacing: 0) {
-                    ComposerTextViewRepresentable(
-                        composerState: composerState,
-                        onSend: {
-                            let content = composerState.text
-                            guard !content.isEmpty else { return }
-                            onSend(content)
-                        },
-                        onSendAndSubmit: {
-                            let content = composerState.text
-                            guard !content.isEmpty else { return }
-                            onSendAndSubmit(content)
-                        },
-                        onDismiss: onDismiss,
-                        onBecomeFirstResponder: onTextViewBecameFirstResponder,
-                        onInsertCommand: { command in
-                            insertCompletedCommand(command)
-                        },
-                        onInsertFile: { entry in
-                            insertCompletedFile(entry)
-                        },
-                        cwdProvider: cwdProvider
-                    )
-                    .frame(height: composerHeight)
-                }
-
-                // Bottom toolbar: + button on left, send button on right
-                HStack(spacing: 0) {
-                    Button(action: openFilePicker) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 28, height: 28)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.leading, 10)
-                    .safeHelp(String(
-                        localized: "composer.attachImage.help",
-                        defaultValue: "Attach image"
-                    ))
-
-                    Spacer()
-
-                    // Send button (same as Enter: send to terminal input)
-                    Button(action: {
-                        let content = composerState.text
-                        guard !content.isEmpty else { return }
-                        onSendAndSubmit(content)
-                    }) {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundStyle(sendButtonForeground)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(composerState.text.isEmpty)
-                    .padding(.trailing, 10)
-                    .safeHelp(String(
-                        localized: "composer.send.help",
-                        defaultValue: "Send (⌘Enter)"
-                    ))
-                }
-                .padding(.vertical, 6)
-            }
-            .background(composerBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(
-                        composerState.bashMode
-                            ? Self.bashAccent.opacity(0.55)
-                            : Color.primary.opacity(0.1),
-                        lineWidth: composerState.bashMode ? 1.5 : 1
-                    )
-            )
-            .shadow(
-                color: composerState.bashMode
-                    ? Self.bashAccent.opacity(0.35)
-                    : .black.opacity(0.06),
-                radius: composerState.bashMode ? 10 : 3,
-                y: 1
-            )
-            .padding(.horizontal, 8)
-            .padding(.bottom, 6)
-            .animation(.easeInOut(duration: 0.22), value: composerState.bashMode)
+            // Composer card — always dark, single-line start, auto-expand
+            composerCard
+                .padding(.horizontal, 8)
+                .padding(.bottom, 6)
+                .animation(.easeInOut(duration: 0.22), value: composerState.bashMode)
         }
         .onAppear {
             SlashCommandRegistry.shared.reloadIfNeeded()
+        }
+    }
+
+    // MARK: - Composer card
+
+    /// The available height from the parent is read via a background
+    /// GeometryReader so the composer stays in normal VStack flow.
+    @State private var availableHeight: CGFloat = 600
+
+    private var effectiveMaxHeight: CGFloat {
+        min(availableHeight * 0.4, Self.absoluteMaxHeight)
+    }
+
+    @ViewBuilder
+    private var composerCard: some View {
+        let showDragHandle = composerHeight >= effectiveMaxHeight
+
+        VStack(spacing: 0) {
+            if showDragHandle {
+                composerDragHandle(maxHeight: effectiveMaxHeight)
+            }
+
+            HStack(alignment: .center, spacing: 6) {
+                // + attach button
+                Button(action: openFilePicker) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.white.opacity(0.7))
+                        .frame(width: 28, height: 28)
+                        .background(Color.white.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 10)
+                .safeHelp(String(
+                    localized: "composer.attachImage.help",
+                    defaultValue: "Attach image"
+                ))
+
+                // Text input
+                ComposerTextViewRepresentable(
+                    composerState: composerState,
+                    onSend: {
+                        let content = composerState.text
+                        guard !content.isEmpty else { return }
+                        onSend(content)
+                    },
+                    onSendAndSubmit: {
+                        let content = composerState.text
+                        guard !content.isEmpty else { return }
+                        onSendAndSubmit(content)
+                    },
+                    onDismiss: onDismiss,
+                    onBecomeFirstResponder: onTextViewBecameFirstResponder,
+                    onInsertCommand: { command in
+                        insertCompletedCommand(command)
+                    },
+                    onInsertFile: { entry in
+                        insertCompletedFile(entry)
+                    },
+                    cwdProvider: cwdProvider,
+                    onContentHeightChanged: { newHeight in
+                        intrinsicContentHeight = newHeight
+                        let clamped = min(max(newHeight, Self.minAllowedHeight), effectiveMaxHeight)
+                        withTransaction(Transaction(animation: nil)) {
+                            composerHeight = clamped
+                        }
+                    }
+                )
+                .frame(height: composerHeight)
+
+                // Send button — blue rounded rect + paperplane
+                Button(action: {
+                    let content = composerState.text
+                    guard !content.isEmpty else { return }
+                    onSendAndSubmit(content)
+                }) {
+                    Image(systemName: "paperplane.fill")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(.white)
+                        .frame(width: 28, height: 28)
+                        .background(
+                            composerState.text.isEmpty
+                                ? Color(red: 0x3A / 255.0, green: 0x3F / 255.0, blue: 0x58 / 255.0)
+                                : Color(red: 0x4A / 255.0, green: 0x5A / 255.0, blue: 0xE8 / 255.0)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
+                .disabled(composerState.text.isEmpty)
+                .padding(.trailing, 10)
+                .safeHelp(String(
+                    localized: "composer.send.help",
+                    defaultValue: "Send (\u{2318}Enter)"
+                ))
+            }
+            .padding(.vertical, 4)
+        }
+        .background(composerBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(
+                    composerState.bashMode
+                        ? Self.bashAccent.opacity(0.55)
+                        : Color(red: 0x3A / 255.0, green: 0x50 / 255.0, blue: 0x80 / 255.0).opacity(0.4),
+                    lineWidth: composerState.bashMode ? 1.5 : 1
+                )
+        )
+        .shadow(
+            color: composerState.bashMode
+                ? Self.bashAccent.opacity(0.35)
+                : .black.opacity(0.25),
+            radius: composerState.bashMode ? 10 : 4,
+            y: 2
+        )
+        // Read available height from parent without consuming space.
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(key: AvailableHeightKey.self, value: geo.frame(in: .global).origin.y)
+            }
+        )
+        .onPreferenceChange(AvailableHeightKey.self) { topY in
+            // topY is the card's Y position from top of screen.
+            // The parent terminal VStack offers everything above this point.
+            if topY > 100 {
+                availableHeight = topY
+            }
+        }
+    }
+
+    private struct AvailableHeightKey: PreferenceKey {
+        static var defaultValue: CGFloat = 600
+        static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+            value = nextValue()
         }
     }
 
@@ -163,19 +216,20 @@ struct ComposerInputView: View {
         red: 0x2E / 255.0, green: 0xE5 / 255.0, blue: 0x9D / 255.0
     )
 
+    /// Fixed dark background — no longer follows system appearance.
+    /// Bash mode uses a slightly different hue + noise overlay for distinction.
     @ViewBuilder
     private var composerBackground: some View {
         if composerState.bashMode {
             ZStack {
                 LinearGradient(
                     colors: [
-                        Color(red: 0x0D / 255.0, green: 0x11 / 255.0, blue: 0x17 / 255.0), // #0D1117
-                        Color(red: 0x16 / 255.0, green: 0x1B / 255.0, blue: 0x22 / 255.0)  // #161B22
+                        Color(red: 0x0D / 255.0, green: 0x11 / 255.0, blue: 0x17 / 255.0),
+                        Color(red: 0x16 / 255.0, green: 0x1B / 255.0, blue: 0x22 / 255.0)
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                // Subtle noise overlay so the flat gradient doesn't look plastic.
                 Canvas { ctx, size in
                     let count = Int(size.width * size.height / 900)
                     for _ in 0..<count {
@@ -192,29 +246,17 @@ struct ComposerInputView: View {
             }
             .transition(.opacity)
         } else {
-            Color.clear.background(.background.opacity(0.97))
+            // Fixed dark: ~#1A1D27
+            Color(red: 0x1A / 255.0, green: 0x1D / 255.0, blue: 0x27 / 255.0)
         }
     }
 
-    private var sendButtonForeground: Color {
-        if composerState.text.isEmpty {
-            return composerState.bashMode
-                ? Self.bashAccent.opacity(0.3)
-                : Color.primary.opacity(0.15)
-        } else {
-            return composerState.bashMode
-                ? Self.bashAccent.opacity(0.85)
-                : Color.primary.opacity(0.5)
-        }
-    }
+    // MARK: - Drag handle (only shown when composer is at max height)
 
-    // MARK: - Drag handle
-
-    private var composerDragHandle: some View {
+    private func composerDragHandle(maxHeight: CGFloat) -> some View {
         VStack(spacing: 0) {
-            // Invisible hit area + visible handle line
             RoundedRectangle(cornerRadius: 1)
-                .fill(Color.primary.opacity(0.15))
+                .fill(Color.white.opacity(0.15))
                 .frame(width: 36, height: 3)
                 .padding(.top, 6)
                 .padding(.bottom, 4)
@@ -231,7 +273,7 @@ struct ComposerInputView: View {
                     }
                     let newHeight = dragStartHeight - value.translation.height
                     withTransaction(Transaction(animation: nil)) {
-                        composerHeight = min(max(newHeight, Self.minAllowedHeight), Self.maxAllowedHeight)
+                        composerHeight = min(max(newHeight, Self.minAllowedHeight), maxHeight)
                     }
                 }
                 .onEnded { _ in
@@ -406,6 +448,8 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
     let onInsertCommand: (SlashCommand) -> Void
     let onInsertFile: (FileEntry) -> Void
     let cwdProvider: (() -> String?)?
+    /// Reports the intrinsic content height so the parent can auto-expand.
+    var onContentHeightChanged: ((CGFloat) -> Void)? = nil
 
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: ComposerTextViewRepresentable
@@ -462,6 +506,18 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
             applyCodeBlockStyling(textView: textView)
             syncCodeBlocksFromTextStorage(textView: textView)
             updateTypingAttributesForCursor(textView: textView)
+            reportContentHeight(textView: textView)
+        }
+
+        /// Measure the text content height and report it for auto-expand.
+        func reportContentHeight(textView: NSTextView) {
+            guard let layoutManager = textView.layoutManager,
+                  let textContainer = textView.textContainer else { return }
+            layoutManager.ensureLayout(for: textContainer)
+            let contentHeight = layoutManager.usedRect(for: textContainer).height
+            let insets = textView.textContainerInset
+            let totalHeight = contentHeight + insets.height * 2
+            parent.onContentHeightChanged?(totalHeight)
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {
@@ -772,7 +828,7 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
             // Reuse the fence-transition machinery. Delete "/code " (or
             // "/code") and enter code block at that position.
             let monoFont = NSFont.monospacedSystemFont(
-                ofSize: NSFont.systemFontSize, weight: .regular
+                ofSize: ComposerInputView.composerFontSize, weight: .regular
             )
             let proseAttrs: [NSAttributedString.Key: Any] = [.font: monoFont]
             let codeAttrs: [NSAttributedString.Key: Any] = [
@@ -873,7 +929,7 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
             }
 
             let monoFont = NSFont.monospacedSystemFont(
-                ofSize: NSFont.systemFontSize, weight: .regular
+                ofSize: ComposerInputView.composerFontSize, weight: .regular
             )
             let proseAttrs: [NSAttributedString.Key: Any] = [.font: monoFont]
             let codeAttrs: [NSAttributedString.Key: Any] = [
@@ -1112,7 +1168,7 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
             }
             // Keep a consistent monospaced font regardless of region.
             attrs[.font] = NSFont.monospacedSystemFont(
-                ofSize: NSFont.systemFontSize, weight: .regular
+                ofSize: ComposerInputView.composerFontSize, weight: .regular
             )
             textView.typingAttributes = attrs
         }
@@ -1126,7 +1182,7 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
                   let block = codeBlockContainingCursor(textView: textView)
             else { return }
             let monoFont = NSFont.monospacedSystemFont(
-                ofSize: NSFont.systemFontSize, weight: .regular
+                ofSize: ComposerInputView.composerFontSize, weight: .regular
             )
             // Insert via textStorage with an explicit NSAttributedString
             // so the \n is guaranteed prose (no .cmuxCodeBlock) regardless
@@ -1151,7 +1207,7 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
         private func insertProseLineBelowBlock(textView: NSTextView, block: NSRange) {
             guard let textStorage = textView.textStorage else { return }
             let monoFont = NSFont.monospacedSystemFont(
-                ofSize: NSFont.systemFontSize, weight: .regular
+                ofSize: ComposerInputView.composerFontSize, weight: .regular
             )
             let proseNL = NSAttributedString(
                 string: "\n",
@@ -1364,14 +1420,19 @@ private struct ComposerTextViewRepresentable: NSViewRepresentable {
         textView.textContainerInset = NSSize(width: 8, height: 8)
         textView.autoresizingMask = [.width]
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-        textView.font = .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        textView.font = .monospacedSystemFont(ofSize: ComposerInputView.composerFontSize, weight: .regular)
         textView.drawsBackground = false
         textView.delegate = context.coordinator
         textView.string = composerState.text
 
+        // Always dark — composer background is fixed dark regardless of system appearance.
+        textView.appearance = NSAppearance(named: .darkAqua)
+        textView.textColor = NSColor(white: 0.92, alpha: 1)
+        textView.insertionPointColor = .white
+
         let placeholder = String(
             localized: "composer.placeholder",
-            defaultValue: "Compose your prompt\u{2026} (\u{2318}Enter to send, Esc to dismiss)"
+            defaultValue: "Type a command or describe a task\u{2026}"
         )
         textView.placeholderText = placeholder
         textView.onBecomeFirstResponder = { [weak coordinator = context.coordinator] in
@@ -1563,47 +1624,36 @@ private final class ComposerNSTextView: NSTextView {
         bashCursorTimer?.invalidate()
     }
 
-    /// Switch the NSTextView's native theme to/from the bash-mode look.
+    /// Switch the NSTextView's bash-mode accents. The dark background and
+    /// white text are always on (the composer is always dark-themed).
     /// Called from updateNSView on every bashMode transition.
     func applyBashModeAppearance(_ on: Bool) {
         NSAnimationContext.runAnimationGroup { ctx in
             ctx.duration = 0.2
             ctx.allowsImplicitAnimation = true
             if on {
-                self.appearance = NSAppearance(named: .darkAqua)
                 self.drawsBackground = true
-                // #0D1117 — matches the SwiftUI gradient's top color so the
-                // NSTextView visually sits inside the card rather than
-                // floating above it.
                 self.backgroundColor = NSColor(
                     srgbRed: 0x0D / 255.0, green: 0x11 / 255.0, blue: 0x17 / 255.0, alpha: 1
                 )
-                self.textColor = NSColor(white: 0.92, alpha: 1)
                 self.insertionPointColor = NSColor(
                     srgbRed: 0x2E / 255.0, green: 0xE5 / 255.0, blue: 0x9D / 255.0, alpha: 1
                 )
-                // Carve a first-line left margin so the ❯ prompt we draw in
-                // draw(_:) has room without overlapping user text. Using
-                // exclusionPaths (rather than textContainerInset or
-                // lineFragmentPadding, both of which are symmetric) lets us
-                // affect only the first line's left edge.
                 self.textContainer?.exclusionPaths = [Self.bashPromptExclusionPath(
                     font: self.font ?? NSFont.monospacedSystemFont(
-                        ofSize: NSFont.systemFontSize, weight: .regular
+                        ofSize: ComposerInputView.composerFontSize, weight: .regular
                     )
                 )]
             } else {
-                self.appearance = nil
                 self.drawsBackground = false
                 self.backgroundColor = .clear
-                self.textColor = .labelColor
-                // Restore default — AppKit picks the system accent color.
-                self.insertionPointColor = .textInsertionPointColor
+                self.insertionPointColor = .white
                 self.textContainer?.exclusionPaths = []
             }
+            // Text color stays white in both modes.
+            self.textColor = NSColor(white: 0.92, alpha: 1)
             self.needsDisplay = true
         }
-        // Start/stop the breathing-cursor driver.
         if on {
             startBashCursorTimer()
         } else {
@@ -1700,7 +1750,7 @@ private final class ComposerNSTextView: NSTextView {
         guard string.isEmpty, !placeholderText.isEmpty else { return }
 
         let attrs: [NSAttributedString.Key: Any] = [
-            .font: font ?? NSFont.systemFont(ofSize: NSFont.systemFontSize),
+            .font: font ?? NSFont.monospacedSystemFont(ofSize: ComposerInputView.composerFontSize, weight: .regular),
             .foregroundColor: NSColor.placeholderTextColor,
         ]
         let inset = textContainerInset
@@ -1709,7 +1759,7 @@ private final class ComposerNSTextView: NSTextView {
         // overdraw the ❯.
         let leftNudge: CGFloat = isBashMode
             ? Self.bashPromptColumnWidth(font: font
-                ?? NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular))
+                ?? NSFont.monospacedSystemFont(ofSize: ComposerInputView.composerFontSize, weight: .regular))
             : 0
         let origin = NSPoint(
             x: inset.width + (textContainer?.lineFragmentPadding ?? 0) + leftNudge,

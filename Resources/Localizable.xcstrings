@@ -69516,13 +69516,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Compose your prompt… (⌘Enter to send, Esc to dismiss)"
+            "value": "Type a command or describe a task…"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "プロンプトを入力… (⌘Enterで送信、Escで閉じる)"
+            "value": "コマンドを入力またはタスクを記述…"
           }
         }
       }

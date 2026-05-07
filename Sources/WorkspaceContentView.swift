@@ -397,17 +397,31 @@ struct WorkspaceContentView: View {
         .animation(.easeInOut(duration: 0.2), value: workspace.agentSessionTracker.sidebarVisible)
         .onAppear {
             workspace.agentSessionTracker.updateFocusedSurface(
-                workspace.focusedPanelId.map { $0.uuidString }
+                workspace.focusedPanelId.map { $0.uuidString },
+                cwd: focusedPanelCwd()
             )
         }
         .onChange(of: workspace.focusedPanelId) { newPanelId in
             workspace.agentSessionTracker.updateFocusedSurface(
-                newPanelId.map { $0.uuidString }
+                newPanelId.map { $0.uuidString },
+                cwd: focusedPanelCwd()
             )
         }
         .onChange(of: workspace.agentSessionTracker.composerVisible) { shouldShow in
             syncComposerVisibility(shouldShow: shouldShow)
         }
+    }
+
+    /// Resolve the CWD for the currently focused terminal panel.
+    private func focusedPanelCwd() -> String? {
+        guard let panelId = workspace.focusedPanelId,
+              let panel = workspace.panels[panelId] as? TerminalPanel else { return nil }
+        if let requested = panel.requestedWorkingDirectory?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !requested.isEmpty {
+            return requested
+        }
+        let reported = panel.directory.trimmingCharacters(in: .whitespacesAndNewlines)
+        return reported.isEmpty ? nil : reported
     }
 
     /// Drive focused panel's composer state from the tracker's composerVisible.
